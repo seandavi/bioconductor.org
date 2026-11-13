@@ -1,0 +1,27 @@
+---
+/** /about/mirrors/: the mirrors in config.yaml by country, as nanoc rendered them. */
+import { getEntry } from 'astro:content';
+
+const config = await getEntry('config', 'site');
+const countries = (config?.data.mirrors ?? [])
+  .map((c) => Object.entries(c)[0])
+  .filter(([name]) => name !== '0-Bioconductor');
+const id = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+---
+{countries.map(([country, mirrors]) => (
+  <>
+    <h2 id={id(country)}>{country}</h2>
+    <ul>
+      {mirrors.map((m) => (
+        <li>
+          <p><a href={m.institution_url}>{m.institution}</a></p>
+          <p>
+            URLs: {m.https_mirror_url && <><a href={m.https_mirror_url}>{m.https_mirror_url}</a>; </>}
+            <a href={m.mirror_url}>{m.mirror_url}</a>
+          </p>
+          <p>Contact: {m.contact} &lt;{m.contact_email.replace('@', ' at ')}&gt;</p>
+        </li>
+      ))}
+    </ul>
+  </>
+))}

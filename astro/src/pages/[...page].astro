@@ -21,6 +21,8 @@ import CopyButtons from '../components/CopyButtons.astro';
 import CourseTable from '../components/CourseTable.astro';
 import CourseYears from '../components/CourseYears.astro';
 import CourseYear from '../components/CourseYear.astro';
+import AnnualReports from '../components/AnnualReports.astro';
+import Mirrors from '../components/Mirrors.astro';
 import { renderablePages, loadEvents, topEvents } from '../lib/content.js';
 
 export async function getStaticPaths() {
@@ -63,6 +65,8 @@ const unknownSlot = (name: string) => {
       : chunk === 'courses' ? <CourseTable />
       : chunk === 'course-years' ? <CourseYears />
       : chunk === 'course-year' ? <CourseYear path={data.path} title={data.title} />
+      : chunk === 'annual-reports' ? <AnnualReports />
+      : chunk === 'mirrors' ? <Mirrors />
       : unknownSlot(chunk),
     )}
   </div>

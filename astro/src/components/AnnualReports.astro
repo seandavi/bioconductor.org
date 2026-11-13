@@ -1,0 +1,13 @@
+---
+/** /about/annual-reports/: one link per AnnRep<year>.pdf in assets/about/annual-reports/, newest first. */
+import { readdirSync } from 'node:fs';
+
+const reports = readdirSync('../assets/about/annual-reports')
+  .map((f) => /^AnnRep(\d+)\.pdf$/.exec(f))
+  .filter((m) => m !== null)
+  .map((m) => ({ href: m[0], name: m[1] }))
+  .sort((a, b) => (a.name < b.name ? 1 : -1));
+---
+<ul class="inline-list">
+  {reports.map((r) => <li><a href={r.href}>{r.name}</a></li>)}
+</ul>

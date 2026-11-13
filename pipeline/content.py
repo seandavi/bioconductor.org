@@ -61,6 +61,10 @@ ERB_SLOTS = [
     (re.compile(r'<ul class="inline_list">\s*<% course_materials\.each do \|item\| %>.*?<% end %>\s*</ul>', re.S),
      "course-years"),
     (re.compile(r"<%=\s*render\(\s*['\"]_course_year_summary['\"].*?%>"), "course-year"),
+    # /about/annual-reports/: the PDFs in assets/about/annual-reports/.
+    (re.compile(r'<ul class="inline-list">\s*<% annual_reports\..*?<% end %>\s*</ul>', re.S), "annual-reports"),
+    # /about/mirrors/: the mirror list in config.yaml.
+    (re.compile(r"<% for country in config\[:mirrors\] %>.*<% end %>", re.S), "mirrors"),
 ]
 
 # nanoc's `filesystem_unified` treats these as page bodies; everything else in

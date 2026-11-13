@@ -319,7 +319,7 @@ mirrors:
      city: Hsinchu
  - China:
    - institution: TUNA Mirror Site, Tsinghua University 
-     institution_url: mirrors.tuna.tsinghua.edu.cn
+     institution_url: https://mirrors.tuna.tsinghua.edu.cn/
      contact: Miao Wang 
      contact_email: mirroradmin@tuna.tsinghua.edu.cn 
      mirror_url: http://mirrors.tuna.tsinghua.edu.cn/bioconductor/
