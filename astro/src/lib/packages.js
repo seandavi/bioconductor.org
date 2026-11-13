@@ -30,6 +30,15 @@ export function reposFor(version) {
   return REPOS.filter((r) => existsSync(join(DATA, version, r, 'packages.json')));
 }
 
+/**
+ * A package in packages.json: its DESCRIPTION fields plus what the pipeline
+ * adds (since, vignettes, …). Only the fields read by name are spelled out.
+ * @typedef {{ Title?: string, Description?: string, Version?: string,
+ *   since?: { release: string, r?: string, date?: string, orEarlier?: boolean },
+ *   [field: string]: any }} PackageRecord
+ */
+
+/** @returns {Record<string, PackageRecord>} package name -> record */
 export function loadRepo(version, repo) {
   const f = join(DATA, version, repo, 'packages.json');
   // Fail loudly: a missing data file must not silently yield zero pages.
