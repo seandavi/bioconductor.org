@@ -1,0 +1,29 @@
+---
+/**
+ * /developers/new_packages/: every package whose first release is the current
+ * devel version, by repository and name. Replaces nanoc's recent_packages(),
+ * which read master's new_packages.rss, last updated in 2019.
+ */
+import { liveVersions, reposFor, loadRepo, repoLabel } from '../lib/packages.js';
+
+const { devel } = liveVersions();
+const groups = reposFor(devel)
+  .map((repo) => ({
+    repo,
+    pkgs: Object.entries(loadRepo(devel, repo))
+      .filter(([, p]) => p.since?.release === devel)
+      .sort(([a], [b]) => a.localeCompare(b)),
+  }))
+  .filter((g) => g.pkgs.length);
+---
+{groups.map(({ repo, pkgs }) => (
+  <>
+    <h2>{repoLabel(repo)} ({pkgs.length})</h2>
+    {pkgs.map(([name, p]) => (
+      <>
+        <p><a class="symlink" href={`/packages/${name}/`}>{name}</a> {p.Title}</p>
+        <blockquote>{p.Description}</blockquote>
+      </>
+    ))}
+  </>
+))}
