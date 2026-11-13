@@ -1,21 +1,25 @@
 ---
 /**
  * /developers/new_packages/: every package whose first release is the current
- * devel version, by repository and name. Replaces nanoc's recent_packages(),
- * which read master's new_packages.rss, last updated in 2019.
+ * release, by repository and name. Release rather than devel: a package in
+ * devel isn't published until it is in a release, and some never are. Replaces
+ * nanoc's recent_packages(), which read master's new_packages.rss, last updated
+ * in 2019.
  */
 import { liveVersions, reposFor, loadRepo, repoLabel } from '../lib/packages.js';
 
-const { devel } = liveVersions();
-const groups = reposFor(devel)
+const { release } = liveVersions();
+const groups = reposFor(release)
   .map((repo) => ({
     repo,
-    pkgs: Object.entries(loadRepo(devel, repo))
-      .filter(([, p]) => p.since?.release === devel)
+    pkgs: Object.entries(loadRepo(release, repo))
+      .filter(([, p]) => p.since?.release === release)
       .sort(([a], [b]) => a.localeCompare(b)),
   }))
   .filter((g) => g.pkgs.length);
 ---
+<p>New in Bioconductor {release}:</p>
+
 {groups.map(({ repo, pkgs }) => (
   <>
     <h2>{repoLabel(repo)} ({pkgs.length})</h2>
