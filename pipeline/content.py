@@ -285,6 +285,9 @@ def write(repo, outdir):
             # YAML parses unquoted dates into date objects; the event sidecars are
             # full of them. ISO strings are what the renderer wants anyway.
             json.dump(obj, fh, indent=1, default=str)
+    # config.yaml as JSON, for the schema-checked `config` collection (#433).
+    with open(os.path.join(dest, "config.json"), "w", encoding="utf-8") as fh:
+        json.dump(load_config(repo), fh, indent=1, default=str)
     # The site-wide announcement banner is a hand-edited fragment in the
     # upstream layouts, not content: carry it verbatim so an upstream edit
     # flows through `just data` with no renderer change. Absent or fully
