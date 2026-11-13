@@ -1,0 +1,84 @@
+# Checks for the Astro build (Bioconductor/bioconductor.org#432). Every PR into
+# astro and every push to it. Builds, checks and publishes nothing: production
+# publishing switches over at cutover (#440).
+name: astro
+
+on:
+  pull_request:
+    branches: [astro]
+  push:
+    branches: [astro]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: astro-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: astro/package-lock.json
+
+      # The runner's system Python refuses pip installs (PEP 668).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: extractions/setup-just@v2
+
+      - name: Install
+        run: |
+          pip install pyyaml yamllint
+          just install
+
+      - name: YAML
+        run: yamllint -f github config.yaml content etc
+
+      - name: Tests
+        run: just test
+
+      - name: Build
+        run: just build
+
+      - name: Canonical links, sitemap, robots
+        working-directory: astro
+        run: |
+          node check-canonical.mjs
+          node check-sitemap.mjs
+          node check-robots.mjs
+
+      # Offline against dist, on the template pages, as in seandavi/bioc-website:
+      # the edge also serves the R2 mirror, so mirror-served paths can't be
+      # decided offline and are excluded.
+      - name: Internal links on template pages
+        working-directory: astro
+        run: |
+          curl -fsSL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-x86_64-unknown-linux-gnu.tar.gz |
+            tar xz --strip-components=1 lychee-x86_64-unknown-linux-gnu/lychee
+          REL=$(ls dist/packages | grep -E '^[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          PKG=$(ls "dist/packages/$REL/bioc/html" | head -1)
+          ./lychee --offline --root-dir "$PWD/dist" --no-progress \
+            --exclude 'packages/[0-9.]+/(bioc|data|workflows)/' \
+            --exclude 'packages/(release|devel|stats)(/|$)' --exclude '/shields/' \
+            --exclude '/checkResults$' --exclude '/dashboard$' \
+            --exclude '/about/annual-reports$' --exclude '/developers/help_wanted$' \
+            --exclude 'support\.bioconductor\.org' \
+            dist/index.html dist/install/index.html dist/about/index.html \
+            dist/help/index.html dist/developers/index.html dist/next.html \
+            "dist/packages/$REL/BiocViews.html" "dist/packages/$REL/bioc/html/$PKG"
+
+      # Reports only until the content collections type the page data (#434);
+      # most of today's errors are untyped JSON. Then this blocks.
+      - name: Types (astro check, non-blocking)
+        continue-on-error: true
+        working-directory: astro
+        run: npx astro check

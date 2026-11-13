@@ -1,6 +1,8 @@
 name: Pr - Preview
 on:
   pull_request:
+    # nanoc previews; not for the astro branch (Bioconductor/bioconductor.org#432)
+    branches: [devel]
     types: [opened, reopened, synchronize]
 jobs:
   dev-pr-create-s3:
