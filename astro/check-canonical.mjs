@@ -1,7 +1,7 @@
 // Build check for #34: run after `npm run build`. Every HTML page in dist/ has
 // exactly one rel=canonical, and the live release/devel versions' package pages
 // point at /packages/release/ and /packages/devel/.
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const walk = (d) =>
@@ -17,6 +17,9 @@ const live = { [vers.at(-1)]: 'devel', [vers.at(-2)]: 'release' };
 const bad = [];
 let n = 0;
 for (const f of walk('dist')) {
+  // Static HTML copied verbatim from public/ (old book supplements and the
+  // like) is published as it was; only pages the build renders carry canonicals.
+  if (existsSync(join('public', f.slice('dist/'.length)))) continue;
   n++;
   const hits = [...readFileSync(f, 'utf8').matchAll(/<link rel="canonical" href="([^"]*)"/g)];
   const path = '/' + f.slice('dist/'.length);

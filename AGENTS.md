@@ -22,6 +22,7 @@ just install   # npm ci in astro/
 just test      # pipeline (unittest) and renderer (node --test) tests
 just build     # data snapshot + content + assets, then the full Astro build
 just dev       # the same inputs, then the dev server
+just parity    # after a build: everything nanoc would publish is in astro/dist
 ```
 
 Python needs only PyYAML. `just data` pulls the package-data snapshot from

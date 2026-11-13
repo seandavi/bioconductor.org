@@ -17,11 +17,13 @@ data:
 content:
     python3 -c 'from pipeline import content, courses; content.write(".", "astro/data"); courses.write(".", "astro/data")'
 
-# Static assets (style, images, js, favicon) -> astro/public/.
+# Static files -> astro/public/: all of assets/, plus the downloadable files that
+# sit beside pages in content/. robots.txt is generated (src/pages/robots.txt.js),
+# and the gitlog feeds went with /developers/gitlog/.
 assets:
     mkdir -p astro/public
-    for d in style images js; do rsync -a --delete assets/$d/ astro/public/$d/; done
-    cp assets/favicon.ico astro/public/
+    rsync -a --delete --exclude /robots.txt --exclude '/developers/rss-feeds/gitlog*.xml' assets/ astro/public/
+    rsync -a --prune-empty-dirs --exclude '*.md' --exclude '*.html' --exclude '*.haml' --exclude '*.yaml' --exclude /style/ --exclude /sitemap.xml content/ astro/public/
 
 # Install Astro's dependencies.
 install:
@@ -34,6 +36,10 @@ dev: data content assets
 # Full static build -> astro/dist/.
 build: data content assets
     cd astro && npm run build
+
+# Is everything nanoc would publish from this repo in the build? (run after build)
+parity:
+    python3 -m pipeline.parity astro/dist
 
 # Importer and renderer tests.
 test:
