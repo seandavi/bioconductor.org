@@ -73,6 +73,26 @@ const config = defineCollection({
       versions: z.array(bioc).min(1),
       devel_repos: z.array(z.string()),
       ami_ids: z.record(z.string()),
+      // [{ country: [mirror, …] }, …]; "0-Bioconductor" is the main site itself.
+      mirrors: z.array(
+        z.record(
+          z.array(
+            z
+              .object({
+                institution: z.string().min(1),
+                institution_url: href,
+                contact: z.string().min(1),
+                contact_email: z.string().email(),
+                city: z.string(),
+                mirror_url: z.string().url(),
+                https_mirror_url: z.string().url().optional(),
+                rsync: z.string().nullable(),
+                country_code: z.string().length(2),
+              })
+              .strict(),
+          ),
+        ),
+      ),
     })
     .passthrough()
     // Release-day edits change both; devel is always the next minor version.
