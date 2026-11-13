@@ -20,6 +20,7 @@ being silently emitted half-rendered.
 import json
 import os
 import re
+import shutil
 import sys
 
 import yaml
@@ -245,7 +246,7 @@ def collect(repo, subdir="content"):
             if meta.get("hero"):
                 raw = load_partial(repo, meta["hero"])
                 if raw is not None:
-                    hero = resolve_erb(raw, repo, cfg)
+                    hero = {"name": meta["hero"], "html": resolve_erb(raw, repo, cfg)}
 
             pages.append({
                 "url": url,
@@ -278,9 +279,10 @@ def collect(repo, subdir="content"):
 
 def write(repo, outdir):
     pages, events, report = collect(repo)
+    write_pages(pages, os.path.join(outdir, "pages"))
     dest = os.path.join(outdir, "site")
     os.makedirs(dest, exist_ok=True)
-    for name, obj in (("pages.json", pages), ("events.json", events)):
+    for name, obj in (("events.json", events),):
         with open(os.path.join(dest, name), "w", encoding="utf-8") as fh:
             # YAML parses unquoted dates into date objects; the event sidecars are
             # full of them. ISO strings are what the renderer wants anyway.
@@ -301,3 +303,34 @@ def write(repo, outdir):
           % (report["with_erb"], len(report["erb_heavy"]), len(report["haml"]),
              report["skipped_generated"]), file=sys.stderr)
     return report
+
+
+def write_pages(pages, dest):
+    """One file per page, at its source path, with the sidecar as frontmatter.
+
+    This is the Astro-native form the content takes at the freeze (#434): the
+    `pages` collection (astro/src/content.config.ts) reads these, and its schema
+    checks the frontmatter. ERB that could be evaluated is already resolved in
+    the body; pages with ERB left over carry `erb_unresolved` and are not
+    rendered until they are ported (#435). A hero partial is written beside the
+    pages under _partials/ and named in the frontmatter.
+    """
+    if os.path.isdir(dest):
+        shutil.rmtree(dest)
+    for p in pages:
+        front = {"title": p["title"], **p["meta"]}
+        if p["hero"]:
+            front["hero"] = p["hero"]["name"]
+            path = os.path.join(dest, "_partials", p["hero"]["name"].strip("/") + ".html")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(p["hero"]["html"])
+        if p["erbUnresolved"]:
+            front["erb_unresolved"] = p["erbUnresolved"]
+        path = os.path.join(dest, p["source"])
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("---\n")
+            yaml.safe_dump(front, fh, sort_keys=False, allow_unicode=True, width=1000)
+            fh.write("---\n")
+            fh.write(p["body"])

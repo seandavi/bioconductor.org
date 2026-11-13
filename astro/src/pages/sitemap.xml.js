@@ -2,5 +2,5 @@
 // Worker otherwise falls through to the mirror for.
 import { shards, sitemapIndex } from '../lib/sitemap.js';
 
-export const GET = () =>
-  new Response(sitemapIndex(Object.keys(shards())), { headers: { 'Content-Type': 'application/xml' } });
+export const GET = async () =>
+  new Response(sitemapIndex(Object.keys(await shards())), { headers: { 'Content-Type': 'application/xml' } });

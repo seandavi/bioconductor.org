@@ -1,3 +1,4 @@
+import { getCollection } from 'astro:content';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -16,15 +17,13 @@ function read(name) {
   return JSON.parse(readFileSync(f, 'utf8'));
 }
 
-// Which pages are renderable is decided by the pipeline, not repeated here.
-// `erbUnresolved` lists the ERB tags it could not evaluate; empty means the
-// page is fully resolved. A hardcoded list used to live here and drifted the
-// moment the pipeline got better at resolving ERB.
-export function loadPages() {
-  return read('pages.json').map((p) => ({
-    ...p,
-    renderable: !(p.erbUnresolved && p.erbUnresolved.length),
-  }));
+// The prose pages [...page].astro renders: everything in the `pages`
+// collection except pages whose ERB isn't ported yet (#435) and the legacy
+// search page, which pages/help/search/ replaces with Pagefind.
+export async function renderablePages() {
+  const pages = await getCollection('pages', ({ data }) => !data.erb_unresolved && data.path !== '/help/search/');
+  // Code-point order, as the URL list was before (not localeCompare, which folds case).
+  return pages.sort((a, b) => (a.data.path < b.data.path ? -1 : a.data.path > b.data.path ? 1 : 0));
 }
 
 export function loadEvents() {

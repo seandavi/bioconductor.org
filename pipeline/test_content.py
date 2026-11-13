@@ -34,3 +34,20 @@ class RenderPartial(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WritePages(unittest.TestCase):
+    def test_frontmatter_body_and_hero(self):
+        from pipeline.content import write_pages
+        page = {"url": "/install/", "source": "install.html", "title": "Install", "body": "<p>x</p>\n",
+                "meta": {"fullwidth": True}, "hero": {"name": "components/install_hero", "html": "<h1>h</h1>"},
+                "erbUnresolved": [], "format": "html", "fullwidth": True}
+        todo = dict(page, source="help/todo.md", hero=None, meta={}, erbUnresolved=["<%= x %>"], body="b")
+        with tempfile.TemporaryDirectory() as d:
+            write_pages([page, todo], d)
+            with open(os.path.join(d, "install.html")) as fh:
+                self.assertEqual(fh.read(), "---\ntitle: Install\nfullwidth: true\nhero: components/install_hero\n---\n<p>x</p>\n")
+            with open(os.path.join(d, "_partials", "components", "install_hero.html")) as fh:
+                self.assertEqual(fh.read(), "<h1>h</h1>")
+            with open(os.path.join(d, "help", "todo.md")) as fh:
+                self.assertIn("erb_unresolved:\n- <%= x %>\n", fh.read())
