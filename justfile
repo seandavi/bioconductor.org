@@ -13,9 +13,9 @@ data:
     mkdir -p astro
     curl -fsSL https://bioconductor.org/_ci/site-data.tar.zst | zstd -dc | tar -x -C astro
 
-# Prose pages and events from content/ -> astro/data/site/.
+# Prose pages, events and config -> astro/data/site/; courses -> astro/data/courses/.
 content:
-    python3 -c 'from pipeline import content; content.write(".", "astro/data")'
+    python3 -c 'from pipeline import content, courses; content.write(".", "astro/data"); courses.write(".", "astro/data")'
 
 # Static assets (style, images, js, favicon) -> astro/public/.
 assets:
