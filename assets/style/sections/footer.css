@@ -18,6 +18,16 @@ footer * {
   text-decoration: none;
 }
 
+/* Footer links keep their underline (#399); the column headings, which are
+ * `<a><h3>…</h3></a>`, stay plain. */
+footer a {
+  text-decoration: underline;
+}
+
+footer a:has(> h3) {
+  text-decoration: none;
+}
+
 .footer-container {
   max-width: 1400px;
   margin: auto;
