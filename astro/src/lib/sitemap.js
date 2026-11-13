@@ -1,4 +1,4 @@
-import { loadPages } from './content.js';
+import { renderablePages } from './content.js';
 import { liveVersions, reposFor, loadRepo, asArray } from './packages.js';
 
 const ORIGIN = 'https://bioconductor.org';
@@ -24,14 +24,14 @@ const junk = new Set(['/help/403/', '/help/404/', '/examples/', '/examples/markd
 // disallows. Devel pages are near-duplicates of release pages and equally
 // self-canonical, so devel lists only packages with no release page, and no
 // devel index pages. Grouped so each group shards independently.
-function groups() {
+async function groups() {
   const { release, devel } = liveVersions();
   const g = {
     // The renderable prose set of [...page].astro, minus the search page it
     // skips and robots.txt disallows, and minus URLs the Worker redirects.
-    pages: loadPages()
-      .filter((p) => p.renderable && p.url !== '/help/search/' && !redirected(p.url) && !junk.has(p.url))
-      .map((p) => p.url),
+    pages: (await renderablePages())
+      .map((p) => p.data.path)
+      .filter((url) => !redirected(url) && !junk.has(url)),
     release: [],
     devel: [],
   };
@@ -58,9 +58,9 @@ function groups() {
 }
 
 // shard name ('release-1') -> URL paths
-export function shards() {
+export async function shards() {
   const out = {};
-  for (const [group, urls] of Object.entries(groups())) {
+  for (const [group, urls] of Object.entries(await groups())) {
     for (let i = 0; i * MAX_URLS < urls.length; i++) {
       out[`${group}-${i + 1}`] = urls.slice(i * MAX_URLS, (i + 1) * MAX_URLS);
     }

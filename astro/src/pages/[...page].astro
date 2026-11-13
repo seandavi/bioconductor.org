@@ -18,29 +18,25 @@ import { marked } from 'marked';
 import Site from '../layouts/Site.astro';
 import Events from '../components/Events.astro';
 import CopyButtons from '../components/CopyButtons.astro';
-import { loadPages, loadEvents, topEvents } from '../lib/content.js';
+import { renderablePages, loadEvents, topEvents } from '../lib/content.js';
 
 export async function getStaticPaths() {
-  return loadPages()
-    .filter((p) => p.renderable)
-    // The legacy search page is a shell around a Solr backend that has no
-    // migration path; pages/help/search/ replaces it with Pagefind and would
-    // otherwise collide on the same output file.
-    .filter((p) => p.url !== '/help/search/')
-    .map((p) => ({
-      // '/' -> 'index', '/about/' -> 'about/index'. Astro is configured with
-      // build.format 'file', which emits <slug>.html, so naming the slug
-      // '<path>/index' produces the '<path>/index.html' the Worker resolves
-      // trailing-slash URLs to (see worker/src/keys.ts candidates()).
-      params: { page: p.url === '/' ? 'index' : p.url.replace(/^\/|\/$/g, '') + '/index' },
-      props: { page: p },
-    }));
+  return (await renderablePages()).map((p) => ({
+    // '/' -> 'index', '/about/' -> 'about/index'. Astro is configured with
+    // build.format 'file', which emits <slug>.html, so naming the slug
+    // '<path>/index' produces the '<path>/index.html' the Worker resolves
+    // trailing-slash URLs to (see worker/src/keys.ts candidates()).
+    params: { page: p.data.path === '/' ? 'index' : p.data.path.replace(/^\/|\/$/g, '') + '/index' },
+    props: { page: p },
+  }));
 }
 
 const { page } = Astro.props;
+const { data } = page;
+const body = page.body ?? '';
 
 marked.setOptions({ gfm: true, breaks: false });
-const html = page.format === 'md' ? await marked.parse(page.body) : page.body;
+const html = data.format === 'md' ? await marked.parse(body) : body;
 
 // The pipeline leaves `<!--slot:events-->` where a data-driven partial stood.
 // Split on it so the events component renders as real markup rather than being
@@ -49,13 +45,13 @@ const SLOT = '<!--slot:events-->';
 const parts = html.split(SLOT);
 const events = parts.length > 1 ? topEvents(loadEvents()) : [];
 ---
-<Site title={page.title} description={page.meta?.description} fullwidth={page.fullwidth}>
-  {page.hero && (
+<Site title={data.title} description={data.description ?? undefined} fullwidth={data.fullwidth}>
+  {data.heroHtml && (
     <section class="hero">
-      <div class="container"><Fragment set:html={page.hero} /></div>
+      <div class="container"><Fragment set:html={data.heroHtml} /></div>
     </section>
   )}
-  <div data-pagefind-body data-pagefind-filter="type:Pages" data-pagefind-meta={page.title ? `title:${page.title}` : undefined}>
+  <div data-pagefind-body data-pagefind-filter="type:Pages" data-pagefind-meta={`title:${data.title}`}>
     {parts.map((chunk, i) => (
       <>
         <Fragment set:html={chunk} />
@@ -63,5 +59,5 @@ const events = parts.length > 1 ? topEvents(loadEvents()) : [];
       </>
     ))}
   </div>
-  {page.url === '/install/' && <CopyButtons />}
+  {data.path === '/install/' && <CopyButtons />}
 </Site>

@@ -76,8 +76,9 @@ jobs:
             dist/help/index.html dist/developers/index.html dist/next.html \
             "dist/packages/$REL/BiocViews.html" "dist/packages/$REL/bioc/html/$PKG"
 
-      # Reports only until the content collections type the page data (#434);
-      # most of today's errors are untyped JSON. Then this blocks.
+      # Reports only: the page data is typed (#434), and what's left is the
+      # untyped registry and package JSON behind /next and BiocViews. Blocks
+      # once that is typed (Bioconductor/bioconductor.org#441).
       - name: Types (astro check, non-blocking)
         continue-on-error: true
         working-directory: astro
