@@ -32,8 +32,9 @@ Python needs only PyYAML. `just data` pulls the package-data snapshot from
 
 - **Content stays in nanoc's form until the freeze.** Convert at build time in
   `pipeline/`; don't rewrite `content/` on this branch. That keeps merges from
-  `devel` conflict-free. At the freeze the converter runs once and its output
-  is committed (#434, #439).
+  `devel` conflict-free. At the freeze `pipeline/freeze.py` commits the
+  converted form once; [FREEZE.md](FREEZE.md) is the runbook, and CI's freeze
+  dry run keeps it working. Editor-facing docs are in README.md.
 - **Fix data at its source.** A schema error in a course, event or config value
   is fixed in `etc/course_descriptions.tsv`, `content/**.yaml` or
   `config.yaml`, never in generated output and never by loosening the schema

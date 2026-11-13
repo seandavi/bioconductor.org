@@ -49,8 +49,8 @@ const html = data.format === 'md' ? await marked.parse(body) : body;
 // Split on them so each renders as a real component rather than being injected
 // as a string: split() with a capture group alternates [html, name, html, …].
 const parts = html.split(/<!--slot:([a-z-]+)-->/);
-const events = parts.includes('events') ? topEvents(loadEvents()) : [];
-const allEvents = parts.includes('upcoming-events') || parts.includes('previous-events') ? loadEvents() : [];
+const events = parts.includes('events') ? topEvents(await loadEvents()) : [];
+const allEvents = parts.includes('upcoming-events') || parts.includes('previous-events') ? await loadEvents() : [];
 const unknownSlot = (name: string) => {
   throw new Error(`${data.path}: no component for <!--slot:${name}-->`);
 };

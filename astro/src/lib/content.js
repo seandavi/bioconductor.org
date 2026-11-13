@@ -26,8 +26,17 @@ export async function renderablePages() {
   return pages.sort((a, b) => (a.data.path < b.data.path ? -1 : a.data.path > b.data.path ? 1 : 0));
 }
 
-export function loadEvents() {
-  return read('events.json');
+// The event records (content/help/events/*.yaml, schema-checked), as plain
+// objects with ISO date strings, which is what the date helpers below expect.
+// `url` is the record's own page, the fallback when it has no link.
+export async function loadEvents() {
+  const day = (d) => d.toISOString().slice(0, 10);
+  return (await getCollection('events')).map(({ data, filePath }) => ({
+    ...data,
+    start: day(data.start),
+    end: day(data.end),
+    url: '/' + (filePath ?? '').replace(/^.*?content\//, '').replace(/\.yaml$/, '/'),
+  }));
 }
 
 /** Events that have ended, most recent start first (nanoc's previous_events). */

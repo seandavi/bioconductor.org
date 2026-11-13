@@ -17,7 +17,6 @@ tags. Those are recorded in the output (`erb: true`) and reported, rather than
 being silently emitted half-rendered.
 """
 
-import json
 import os
 import re
 import shutil
@@ -296,24 +295,15 @@ def collect(repo, subdir="content"):
 def write(repo, outdir):
     pages, events, report = collect(repo)
     write_pages(pages, os.path.join(outdir, "pages"))
-    dest = os.path.join(outdir, "site")
-    os.makedirs(dest, exist_ok=True)
-    for name, obj in (("events.json", events),):
-        with open(os.path.join(dest, name), "w", encoding="utf-8") as fh:
-            # YAML parses unquoted dates into date objects; the event sidecars are
-            # full of them. ISO strings are what the renderer wants anyway.
-            json.dump(obj, fh, indent=1, default=str)
-    # config.yaml as JSON, for the schema-checked `config` collection (#433).
-    with open(os.path.join(dest, "config.json"), "w", encoding="utf-8") as fh:
-        json.dump(load_config(repo), fh, indent=1, default=str)
     # The site-wide announcement banner is a hand-edited fragment in the
-    # upstream layouts, not content: carry it verbatim so an upstream edit
-    # flows through `just data` with no renderer change. Absent or fully
-    # commented-out upstream -> empty file -> no banner.
+    # upstream layouts, not content: carry it verbatim beside the hero partials.
+    # Absent or fully commented-out upstream -> empty file -> no banner.
     ann = os.path.join(repo, "layouts", "components", "announcement.html")
-    with open(os.path.join(dest, "announcement.html"), "w", encoding="utf-8") as fh:
+    dest = os.path.join(outdir, "pages", "_partials", "announcement.html")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "w", encoding="utf-8") as fh:
         fh.write(open(ann, encoding="utf-8").read() if os.path.exists(ann) else "")
-    print("[content] %d pages, %d events -> %s" % (len(pages), len(events), dest),
+    print("[content] %d pages, %d events -> %s" % (len(pages), len(events), os.path.join(outdir, "pages")),
           file=sys.stderr)
     print("[content] %d contain ERB (%d heavily), %d haml, %d generated pages skipped"
           % (report["with_erb"], len(report["erb_heavy"]), len(report["haml"]),

@@ -88,3 +88,17 @@ jobs:
         continue-on-error: true
         working-directory: astro
         run: npx astro check
+
+      # The cutover's one-time conversion (pipeline/freeze.py, FREEZE.md) must
+      # still produce the same site: freeze this checkout, rebuild without the
+      # converter, and compare. Last, because it rewrites the working tree.
+      # /next is built from live registry data, and BiocViews.html carries a
+      # random island id, so both differ between any two builds.
+      - name: Freeze dry run
+        run: |
+          mv astro/dist "$RUNNER_TEMP/dist"
+          python3 -m pipeline.freeze
+          just assets
+          (cd astro && npm run build) > "$RUNNER_TEMP/frozen.log" 2>&1 || { tail -40 "$RUNNER_TEMP/frozen.log"; exit 1; }
+          python3 -m pipeline.parity astro/dist
+          diff -rq "$RUNNER_TEMP/dist" astro/dist -x pagefind -x _astro -x next | grep -v '/BiocViews.html ' && exit 1 || echo "frozen build matches"
