@@ -49,6 +49,11 @@ jobs:
       - name: Build
         run: just build
 
+      # Every page, asset and download nanoc would publish from this repo is in
+      # the build, apart from pipeline/parity.py's documented exclusions.
+      - name: Parity with nanoc
+        run: just parity
+
       - name: Canonical links, sitemap, robots
         working-directory: astro
         run: |
