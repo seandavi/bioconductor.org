@@ -42,7 +42,8 @@ Python needs only PyYAML. `just data` pulls the package-data snapshot from
 - **Every change is a PR into `astro`** from a short branch, on
   [seandavi/bioconductor.org](https://github.com/seandavi/bioconductor.org).
   CI (`.github/workflows/astro.yml`) must pass: YAML syntax, tests, build,
-  canonical/sitemap/robots checks, and internal links.
+  parity with nanoc, canonical/sitemap/robots checks, internal links,
+  `astro check`, and the freeze dry run.
 - **Issues live upstream** in Bioconductor/bioconductor.org, labeled
   `astro-migration`. A merge into `astro` can't close them, so close the issue
   by hand with a link to the PR and add the `on-astro` label.
