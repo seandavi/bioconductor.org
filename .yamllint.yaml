@@ -1,0 +1,3 @@
+# Syntax errors only for now: nanoc's sidecars predate any style. Rules tighten
+# with the schemas in Bioconductor/bioconductor.org#433.
+rules: {}
