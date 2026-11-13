@@ -24,7 +24,8 @@ import CourseYear from '../components/CourseYear.astro';
 import AnnualReports from '../components/AnnualReports.astro';
 import Mirrors from '../components/Mirrors.astro';
 import NewPackages from '../components/NewPackages.astro';
-import { renderablePages, loadEvents, topEvents } from '../lib/content.js';
+import PreviousEvents from '../components/PreviousEvents.astro';
+import { renderablePages, loadEvents, topEvents, pastEvents } from '../lib/content.js';
 
 export async function getStaticPaths() {
   return (await renderablePages()).map((p) => ({
@@ -49,6 +50,7 @@ const html = data.format === 'md' ? await marked.parse(body) : body;
 // as a string: split() with a capture group alternates [html, name, html, …].
 const parts = html.split(/<!--slot:([a-z-]+)-->/);
 const events = parts.includes('events') ? topEvents(loadEvents()) : [];
+const allEvents = parts.includes('upcoming-events') || parts.includes('previous-events') ? loadEvents() : [];
 const unknownSlot = (name: string) => {
   throw new Error(`${data.path}: no component for <!--slot:${name}-->`);
 };
@@ -63,6 +65,8 @@ const unknownSlot = (name: string) => {
     {parts.map((chunk, i) =>
       i % 2 === 0 ? <Fragment set:html={chunk} />
       : chunk === 'events' ? <Events events={events} />
+      : chunk === 'upcoming-events' ? <Events events={topEvents(allEvents, Infinity)} />
+      : chunk === 'previous-events' ? <PreviousEvents events={pastEvents(allEvents)} />
       : chunk === 'courses' ? <CourseTable />
       : chunk === 'course-years' ? <CourseYears />
       : chunk === 'course-year' ? <CourseYear path={data.path} title={data.title} />

@@ -51,3 +51,13 @@ class WritePages(unittest.TestCase):
                 self.assertEqual(fh.read(), "<h1>h</h1>")
             with open(os.path.join(d, "help", "todo.md")) as fh:
                 self.assertIn("erb_unresolved:\n- <%= x %>\n", fh.read())
+
+
+class ErbDetection(unittest.TestCase):
+    def test_multiline_tag_is_erb(self):
+        from pipeline.content import ERB
+        self.assertTrue(ERB.search("<%= render('/_upcoming_events/', :events => x)\n%>"))
+
+    def test_r_operator_is_not_erb(self):
+        from pipeline.content import ERB
+        self.assertIsNone(ERB.search("- fully support of replace operator, %<% <2015-02-09, Mon>\n%<+% too"))

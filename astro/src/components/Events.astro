@@ -5,7 +5,8 @@
  * That partial looped over build-time event items; the same records are in
  * `astro/data/site/events.json`, extracted from the 171 metadata-only YAML
  * files under `content/help/events/`. Markup follows the original so
- * style/sections/*.css still applies.
+ * style/sections/*.css still applies. Titles and locations are raw HTML, as
+ * nanoc printed them: some records carry entities (Ribeir&atilde;o Preto).
  */
 import { eventDate } from '../lib/content.js';
 
@@ -17,10 +18,10 @@ const { events = [] } = Astro.props;
     <a href={e.link?.url ?? e.url}>
       <div class="event-card-container">
         <div class="event-card">
-          <p class="format-bold">{e.title}</p>
+          <p class="format-bold" set:html={e.title} />
           <div class="event-date-location">
             <p class="text-small">{eventDate(e)}</p>
-            <p class="text-small">{e.location}</p>
+            <p class="text-small" set:html={e.location} />
           </div>
         </div>
       </div>

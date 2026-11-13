@@ -30,6 +30,13 @@ export function loadEvents() {
   return read('events.json');
 }
 
+/** Events that have ended, most recent start first (nanoc's previous_events). */
+export function pastEvents(events) {
+  const today = new Date().toISOString().slice(0, 10);
+  const endDate = (e) => String(e.end ?? e.start ?? '');
+  return events.filter((e) => endDate(e) < today).sort((a, b) => String(b.start ?? '').localeCompare(String(a.start ?? '')));
+}
+
 /** Only events that haven't ended yet, ordered by start date. */
 export function topEvents(events, limit = 5) {
   const today = new Date().toISOString().slice(0, 10);
