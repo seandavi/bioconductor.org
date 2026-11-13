@@ -1,15 +1,17 @@
 // Typed site data (Bioconductor/bioconductor.org#433). A record that breaks a
 // schema fails the build, naming the file and the field.
 //
-// Until the freeze, courses and config are converted at build time from the
-// files nanoc still reads (etc/course_descriptions.tsv, config.yaml; see
-// pipeline/). Events are read where they live, in content/help/events/.
+// Until the freeze, pages and courses are converted at build time by pipeline/
+// (lib/sources.js says where from). Events and config are read where they live:
+// content/help/events/ and config.yaml.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parseFrontmatter } from '@astrojs/markdown-remark';
 import { defineCollection, z } from 'astro:content';
 import type { Loader } from 'astro/loaders';
 import { file, glob } from 'astro/loaders';
+import yaml from 'js-yaml';
+import { COURSES, PAGES, PARTIALS } from './lib/sources.js';
 
 // Strings, never YAML numbers: an unquoted 3.10 reads as 3.1, which is how the
 // course table came to list Bioc "3.1" for 2019 sessions.
@@ -54,15 +56,15 @@ const session = z
   .refine((s) => s.end >= s.start, { message: 'end is before start', path: ['end'] });
 
 const courses = defineCollection({
-  loader: glob({ base: './data/courses', pattern: '*.yaml' }),
+  loader: glob({ base: COURSES, pattern: '*.yaml' }),
   schema: z.object({ course: z.string().min(1), sessions: z.array(session).min(1) }).strict(),
 });
 
 // Only the keys the site reads are typed; the rest (nanoc's deploy settings)
 // pass through until nanoc goes (#436).
 const config = defineCollection({
-  loader: file('./data/site/config.json', {
-    parser: (text) => [{ id: 'site', ...JSON.parse(text) }],
+  loader: file('../config.yaml', {
+    parser: (text) => [{ id: 'site', ...(yaml.load(text) as object) }],
   }),
   schema: z
     .object({
@@ -130,7 +132,7 @@ function pagesLoader(base: string): Loader {
         const text = readFileSync(join(base, rel), 'utf8');
         const { frontmatter, content } = parseFrontmatter(text);
         const hero = frontmatter.hero
-          ? readFileSync(join(base, '_partials', `${String(frontmatter.hero).replace(/^\/|\/$/g, '')}.html`), 'utf8')
+          ? readFileSync(join(PARTIALS, `${String(frontmatter.hero).replace(/^\/|\/$/g, '')}.html`), 'utf8')
           : undefined;
         const path = urlFor(rel);
         const data = await parseData({
@@ -145,7 +147,7 @@ function pagesLoader(base: string): Loader {
 }
 
 const pages = defineCollection({
-  loader: pagesLoader('./data/pages'),
+  loader: pagesLoader(PAGES),
   schema: z
     .object({
       title: z.string().min(1),

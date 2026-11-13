@@ -12,7 +12,20 @@ in the build, or be listed in GONE with the reason.
 import os
 import sys
 
-from pipeline.content import BODY_EXT, GENERATED, url_for
+import re
+
+# nanoc's routing, kept here rather than imported so the check outlives the
+# converter, which the freeze removes (FREEZE.md).
+BODY_EXT = (".md", ".html", ".haml")
+GENERATED = re.compile(r"^/help/bioc-views/")  # pages nanoc filled from package data
+
+
+def url_for(rel):
+    """`about/index.html` -> `/about/`, `help/faq.md` -> `/help/faq/`."""
+    parts = rel.rsplit(".", 1)[0].split("/")
+    if parts[-1] == "index":
+        parts = parts[:-1]
+    return "/" + "/".join(parts) + "/" if parts else "/"
 
 # Not published on purpose. Paths are site-absolute.
 GONE = {
@@ -36,6 +49,8 @@ def expected(repo="."):
         for fn in files:
             rel = os.path.relpath(os.path.join(dirpath, fn), content).replace(os.sep, "/")
             stem, ext = os.path.splitext(fn)
+            if rel.startswith("_partials/"):
+                continue  # fragments inlined into pages after the freeze, not pages
             if ext in BODY_EXT:
                 url = url_for(rel)
                 if not GENERATED.match(url):
