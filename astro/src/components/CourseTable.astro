@@ -12,6 +12,8 @@ const rows = (await getCollection('courses'))
   .sort((a, b) => (a.end === b.end ? (a.title < b.title ? -1 : a.title > b.title ? 1 : 0) : a.end < b.end ? 1 : -1));
 
 const inline = (md: string) => marked.parseInline(md) as string;
+// nanoc's rows were valign="top"; HTMLAttributes no longer lists it, so it is spread in.
+const top = { valign: 'top' };
 // A course with no link of its own links to its directory, which is per year.
 const course = (r: (typeof rows)[number]) =>
   r.url ? inline(`[${r.course}](${r.url})`) : `<a href='${r.start.slice(0, 4)}/${r.course}/'>${r.course}</a>`;
@@ -29,7 +31,7 @@ const course = (r: (typeof rows)[number]) =>
   </thead>
   <tbody>
     {rows.map((r) => (
-      <tr valign="top">
+      <tr {...top}>
         <td>{r.keyword}</td>
         <td set:html={inline(`${r.title}, ${r.instructor}`)} />
         <td set:html={course(r)} />

@@ -16,7 +16,24 @@ const BASE =
 // release first: it is the one people land on.
 export const UNIVERSES = ['bioc-release', 'bioc'];
 
+/**
+ * One job on one platform, as r-universe reports it in `_jobs`.
+ * @typedef {{ config: string, check?: string, job?: number, r?: string, time?: number, artifact?: string }} Job
+ */
+/**
+ * A package record in an observation (the registry's copy of r-universe's
+ * /api/packages). Only the fields read here are spelled out.
+ * @typedef {{ Package: string, Version?: string, _status?: string, _jobs?: Job[], [field: string]: any }} ObservedPackage
+ */
+/**
+ * A propagated package in prop/<universe>/index.json.
+ * @typedef {{ version: string, sha256?: string, ts?: string, bioccheck?: string | null,
+ *   artifacts?: { os: string, r?: string, sha256: string, file?: string }[],
+ *   desc?: Record<string, string>, meta?: Record<string, any>, archs?: string[] }} IndexEntry
+ */
+
 const memo = new Map();
+/** @returns {Promise<any>} */
 function getJSON(url) {
   if (!memo.has(url)) {
     memo.set(
@@ -30,11 +47,12 @@ function getJSON(url) {
   return memo.get(url);
 }
 
-// package -> {version, sha256, ts, bioccheck, artifacts: [{os, r, sha256, file}]}
+/** @returns {Promise<Record<string, IndexEntry>>} package -> its propagated entry */
 export function propIndex(universe) {
   return getJSON(`${BASE}/prop/${universe}/index.json`);
 }
 
+/** @returns {Promise<ObservedPackage[]>} */
 export async function latestObservation(universe) {
   const state = await getJSON(`${BASE}/state/${universe}/latest`);
   return getJSON(`${BASE}/${state.key}`);
