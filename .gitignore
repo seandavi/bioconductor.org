@@ -26,3 +26,12 @@ postgresql_password
 manifest/*
 node_modules/
 package
+
+# Astro build (astro/): generated inputs and outputs. astro/data/ is written by
+# `just content` and the package-data snapshot; astro/public/ by `just assets`.
+/astro/node_modules
+/astro/data
+/astro/public
+/astro/dist
+/astro/.astro
+__pycache__/

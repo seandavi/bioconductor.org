@@ -1,0 +1,94 @@
+---
+/**
+ * Everything under /packages/. Three page kinds share this route because they
+ * share one dynamic segment space and Astro allows a single catch-all per
+ * directory:
+ *
+ *   detail     /packages/<version>/<repo>/html/<pkg>.html   (92,162 pages)
+ *   index      /packages/<version>/<repo>/index.html        (123 pages)
+ *   biocviews  /packages/<version>/BiocViews.html           (35 pages)
+ *
+ * The dispatch is on an explicit `kind` prop rather than on re-parsing the
+ * slug, so adding a kind cannot silently fall through to the wrong renderer.
+ */
+import Site from '../../layouts/Site.astro';
+import PackageDetail from '../../components/PackageDetail.astro';
+import PackageIndex from '../../components/PackageIndex.astro';
+import BiocViews from '../../components/BiocViews.astro';
+import { versions, reposFor, loadRepo, loadTree, repoLabel } from '../../lib/packages.js';
+
+export async function getStaticPaths() {
+  const paths = [];
+  // The newest version present is devel and its predecessor the release --
+  // only that live pair gets the channel chrome on the BiocViews page;
+  // archival releases get a plain version header and no toggle.
+  const byNum = versions().slice().sort((a, b) => {
+    const [am, an] = a.split('.').map(Number);
+    const [bm, bn] = b.split('.').map(Number);
+    return am - bm || an - bn;
+  });
+  const devel = byNum[byNum.length - 1];
+  const release = byNum[byNum.length - 2];
+  const channelOf = (v) => (v === devel ? 'devel' : v === release ? 'release' : null);
+  for (const version of versions()) {
+    for (const repo of reposFor(version)) {
+      const pkgs = loadRepo(version, repo);
+      for (const [name, pkg] of Object.entries(pkgs)) {
+        paths.push({
+          params: { slug: `${version}/${repo}/html/${name}` },
+          // Pagefind indexes the release's pages only: devel near-duplicates
+          // would shadow every result, and archival releases are frozen.
+          props: { kind: 'detail', channel: channelOf(version), pkg, name, version, repo, indexed: version === release },
+        });
+      }
+      // build.format is 'file', so the '<...>/index' slug emits
+      // '<...>/index.html' -- which is what the Worker resolves a
+      // trailing-slash URL to (worker/src/keys.ts candidates()).
+      paths.push({
+        params: { slug: `${version}/${repo}/index` },
+        props: { kind: 'index', channel: channelOf(version), version, repo, label: repoLabel(repo), packages: pkgs },
+      });
+    }
+    const tree = loadTree(version);
+    if (tree) {
+      const channel = channelOf(version);
+      const other =
+        channel === 'devel'
+          ? { version: release, channel: 'release' }
+          : channel === 'release'
+            ? { version: devel, channel: 'devel' }
+            : null;
+      paths.push({
+        params: { slug: `${version}/BiocViews` },
+        props: { kind: 'biocviews', version, tree, channel, other },
+      });
+    }
+  }
+  return paths;
+}
+
+const props = Astro.props;
+// The live release and devel versions are the same pages as /packages/release/
+// and /packages/devel/, which are the URLs to index; archival releases are
+// distinct frozen content and stay self-canonical.
+const canonical = props.channel
+  ? Astro.url.pathname.replace(`/packages/${props.version}/`, `/packages/${props.channel}/`)
+  : undefined;
+const titles = {
+  // As the legacy page: devel pages are titled "<pkg> (development version)".
+  detail: () => props.name + (props.channel === 'devel' ? ' (development version)' : ''),
+  index: () => `${props.version} ${props.label} Packages`,
+  biocviews: () => `${props.version} Package Categories`,
+};
+---
+<Site title={titles[props.kind]()} description={props.kind === 'detail' ? props.pkg.Title : undefined} canonical={canonical}>
+  {props.kind === 'detail' && (
+    <PackageDetail pkg={props.pkg} name={props.name} version={props.version} repo={props.repo} indexed={props.indexed} />
+  )}
+  {props.kind === 'index' && (
+    <PackageIndex version={props.version} repo={props.repo} label={props.label} packages={props.packages} />
+  )}
+  {props.kind === 'biocviews' && (
+    <BiocViews version={props.version} tree={props.tree} channel={props.channel} other={props.other} />
+  )}
+</Site>
