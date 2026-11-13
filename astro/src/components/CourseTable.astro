@@ -1,0 +1,42 @@
+---
+/**
+ * The course table on /help/course-materials/, from the `courses` collection.
+ * Same markup as nanoc's render_courses (lib/helpers.rb), which the page's
+ * DataTables script expects: newest end date first, then by title.
+ */
+import { getCollection } from 'astro:content';
+import { marked } from 'marked';
+
+const rows = (await getCollection('courses'))
+  .flatMap(({ data }) => data.sessions.map((s) => ({ ...s, course: data.course })))
+  .sort((a, b) => (a.end === b.end ? (a.title < b.title ? -1 : a.title > b.title ? 1 : 0) : a.end < b.end ? 1 : -1));
+
+const inline = (md: string) => marked.parseInline(md) as string;
+// A course with no link of its own links to its directory, which is per year.
+const course = (r: (typeof rows)[number]) =>
+  r.url ? inline(`[${r.course}](${r.url})`) : `<a href='${r.start.slice(0, 4)}/${r.course}/'>${r.course}</a>`;
+---
+<table id="course_descriptions">
+  <thead>
+    <tr>
+      <th>Keyword</th>
+      <th>Title</th>
+      <th>Course</th>
+      <th>Materials</th>
+      <th>Date</th>
+      <th>Bioc/R Version</th>
+    </tr>
+  </thead>
+  <tbody>
+    {rows.map((r) => (
+      <tr valign="top">
+        <td>{r.keyword}</td>
+        <td set:html={inline(`${r.title}, ${r.instructor}`)} />
+        <td set:html={course(r)} />
+        <td set:html={inline(r.materials)} />
+        <td set:html={r.start.replaceAll('-', '&#8209;')} />
+        <td>{r.bioc}/{r.r}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>

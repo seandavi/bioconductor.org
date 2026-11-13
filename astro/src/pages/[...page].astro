@@ -18,6 +18,9 @@ import { marked } from 'marked';
 import Site from '../layouts/Site.astro';
 import Events from '../components/Events.astro';
 import CopyButtons from '../components/CopyButtons.astro';
+import CourseTable from '../components/CourseTable.astro';
+import CourseYears from '../components/CourseYears.astro';
+import CourseYear from '../components/CourseYear.astro';
 import { renderablePages, loadEvents, topEvents } from '../lib/content.js';
 
 export async function getStaticPaths() {
@@ -38,12 +41,14 @@ const body = page.body ?? '';
 marked.setOptions({ gfm: true, breaks: false });
 const html = data.format === 'md' ? await marked.parse(body) : body;
 
-// The pipeline leaves `<!--slot:events-->` where a data-driven partial stood.
-// Split on it so the events component renders as real markup rather than being
-// injected as a string.
-const SLOT = '<!--slot:events-->';
-const parts = html.split(SLOT);
-const events = parts.length > 1 ? topEvents(loadEvents()) : [];
+// The pipeline leaves `<!--slot:name-->` where a data-driven partial stood.
+// Split on them so each renders as a real component rather than being injected
+// as a string: split() with a capture group alternates [html, name, html, …].
+const parts = html.split(/<!--slot:([a-z-]+)-->/);
+const events = parts.includes('events') ? topEvents(loadEvents()) : [];
+const unknownSlot = (name: string) => {
+  throw new Error(`${data.path}: no component for <!--slot:${name}-->`);
+};
 ---
 <Site title={data.title} description={data.description ?? undefined} fullwidth={data.fullwidth}>
   {data.heroHtml && (
@@ -52,12 +57,14 @@ const events = parts.length > 1 ? topEvents(loadEvents()) : [];
     </section>
   )}
   <div data-pagefind-body data-pagefind-filter="type:Pages" data-pagefind-meta={`title:${data.title}`}>
-    {parts.map((chunk, i) => (
-      <>
-        <Fragment set:html={chunk} />
-        {i < parts.length - 1 && <Events events={events} />}
-      </>
-    ))}
+    {parts.map((chunk, i) =>
+      i % 2 === 0 ? <Fragment set:html={chunk} />
+      : chunk === 'events' ? <Events events={events} />
+      : chunk === 'courses' ? <CourseTable />
+      : chunk === 'course-years' ? <CourseYears />
+      : chunk === 'course-year' ? <CourseYear path={data.path} title={data.title} />
+      : unknownSlot(chunk),
+    )}
   </div>
   {data.path === '/install/' && <CopyButtons />}
 </Site>

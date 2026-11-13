@@ -55,6 +55,12 @@ ERB_AMI = re.compile(
 # needs one cannot silently render without it.
 ERB_SLOTS = [
     (re.compile(r"<%=\s*render\(\s*['\"]/_top_events/['\"].*?%>"), "events"),
+    # /help/course-materials/: the course table (render_courses in lib/helpers.rb)
+    # and the list of year pages; then each year page's list of its courses.
+    (re.compile(r"<%=\s*render_courses\s*%>"), "courses"),
+    (re.compile(r'<ul class="inline_list">\s*<% course_materials\.each do \|item\| %>.*?<% end %>\s*</ul>', re.S),
+     "course-years"),
+    (re.compile(r"<%=\s*render\(\s*['\"]_course_year_summary['\"].*?%>"), "course-year"),
 ]
 
 # nanoc's `filesystem_unified` treats these as page bodies; everything else in

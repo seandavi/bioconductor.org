@@ -1,0 +1,10 @@
+---
+/** The year pages under /help/course-materials/, newest first (nanoc's course_materials helper). */
+import { getCollection } from 'astro:content';
+
+const years = (await getCollection('pages', ({ data }) => /^\/help\/course-materials\/[^/]+\/$/.test(data.path)))
+  .sort((a, b) => (a.data.title < b.data.title ? 1 : a.data.title > b.data.title ? -1 : 0));
+---
+<ul class="inline_list">
+  {years.map(({ data }) => <li><a href={data.path}>{data.title}</a></li>)}
+</ul>
