@@ -25,14 +25,15 @@ import sys
 
 import yaml
 
-# A real ERB tag: <% ... %> or <%= ... %>, on one line.
+# A real ERB tag: <% ... %> or <%= ... %>, which may span lines.
 #
-# Requiring the closing %> on the same line matters. Counting bare `<%` flags
-# R's `%<%` operator, which appears in package NEWS text -- it put a 6,973-line
-# release-notes page containing no ERB whatsoever into the "cannot render"
-# bucket. Every ERB tag in this content tree is single-line, so this is exact
-# rather than a heuristic.
-ERB = re.compile(r"<%[-=]?[^\n%]*%>")
+# R's `%<%` operator appears in package NEWS text and once put a 6,973-line
+# release-notes page containing no ERB into the "cannot render" bucket. The
+# lookbehind skips it: a tag never follows a `%`. An earlier version required
+# the closing %> on the same line instead, which missed /help/events/'s two
+# tags that wrap onto a second line, so that page shipped with its ERB showing
+# (seandavi/bioc-website#82).
+ERB = re.compile(r"(?<!%)<%[-=]?(?:[^%]|%(?!>))*?%>")
 
 # The two constructs that make up nearly all of the ERB actually used:
 # a config lookup (optionally chained with .sub) and a static partial include.
@@ -55,6 +56,9 @@ ERB_AMI = re.compile(
 # needs one cannot silently render without it.
 ERB_SLOTS = [
     (re.compile(r"<%=\s*render\(\s*['\"]/_top_events/['\"].*?%>"), "events"),
+    # /help/events/: all upcoming events as cards, then every past one.
+    (re.compile(r"<%=\s*render\(\s*['\"]/_upcoming_events/['\"].*?%>", re.S), "upcoming-events"),
+    (re.compile(r"<%=\s*render\(\s*['\"]/_previous_events/['\"].*?%>", re.S), "previous-events"),
     # /help/course-materials/: the course table (render_courses in lib/helpers.rb)
     # and the list of year pages; then each year page's list of its courses.
     (re.compile(r"<%=\s*render_courses\s*%>"), "courses"),
