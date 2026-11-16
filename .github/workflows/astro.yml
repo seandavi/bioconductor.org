@@ -10,6 +10,9 @@
 # site/latest, the build production serves, is written only while the
 # repository variable PUBLISH_LATEST is 'true'; otherwise builds land beside
 # production to be compared with it. The edge decides what is served.
+#
+# sync.yml (#445) also calls this workflow with `ref` to check a devel merge
+# before pushing it. Those calls only check: every publish step is skipped.
 name: astro
 
 on:
@@ -18,12 +21,18 @@ on:
   push:
     branches: [astro]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit to check
+        type: string
+        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: astro-${{ github.ref }}
+  group: astro-${{ inputs.ref || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -46,6 +55,8 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -134,7 +145,7 @@ jobs:
       # get no secrets, nor does any run until the R2 secrets are set, so
       # those skip the upload.
       - name: No R2 credentials
-        if: env.AWS_ACCESS_KEY_ID == ''
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID == ''
         # Once this repository serves production, a missing secret must fail the
         # run, not leave production on a stale build behind a green check.
         run: |
@@ -144,7 +155,7 @@ jobs:
           echo "::warning::R2 secrets unavailable; build $BUILD_ID not uploaded"
 
       - name: Publish preview
-        if: env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
         # Second pass only re-touches what the first left behind: sync is
         # idempotent, and one transient failure must not fail the build.
         run: |
@@ -153,7 +164,7 @@ jobs:
             aws s3 sync $EP --delete --no-progress "$RUNNER_TEMP/dist" "$DEST"
 
       - name: Comment preview URL
-        if: env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -171,7 +182,7 @@ jobs:
 
       # A dispatch can name any branch; only astro's builds are published.
       - name: Publish versioned build
-        if: env.AWS_ACCESS_KEY_ID != '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/astro'
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/astro'
         run: |
           DEST="s3://bioc-site/site/$BUILD_ID"
           aws s3 sync $EP --no-progress "$RUNNER_TEMP/dist" "$DEST" ||
@@ -179,7 +190,7 @@ jobs:
           echo "Published $DEST" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Point site/latest at this build
-        if: env.AWS_ACCESS_KEY_ID != '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/astro' && vars.PUBLISH_LATEST == 'true'
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/astro' && vars.PUBLISH_LATEST == 'true'
         run: |
           echo -n "$BUILD_ID" | aws s3 cp $EP - s3://bioc-site/site/latest
           echo "site/latest -> $BUILD_ID" | tee -a "$GITHUB_STEP_SUMMARY"

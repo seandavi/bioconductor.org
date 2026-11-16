@@ -7,7 +7,11 @@ and the [Astro](https://astro.build) project in `astro/` that builds it.
 > the content is still in nanoc's form: each page has a `.yaml` sidecar, and
 > courses are rows in `etc/course_descriptions.tsv`. The build converts it.
 > This guide describes the form it takes after the freeze ([FREEZE.md](FREEZE.md)).
-> Edits made in the old form are carried over automatically.
+> Edits made in the old form are carried over automatically: every 30 minutes
+> `devel` is merged into `astro`, which builds and publishes the site, so an
+> edit merged into `devel` is live within about half an hour plus the build. A
+> merge that conflicts or fails the checks opens a pull request into `astro`
+> for the maintainers instead, and nothing publishes until it's resolved.
 
 ## Editing the site
 
