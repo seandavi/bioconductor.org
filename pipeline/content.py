@@ -68,6 +68,12 @@ ERB_SLOTS = [
     (re.compile(r'<ul class="inline-list">\s*<% annual_reports\..*?<% end %>\s*</ul>', re.S), "annual-reports"),
     # /developers/new_packages/: packages new in devel, from the package data.
     (re.compile(r"<% for package in recent_packages\(\) %>.*?<% end %>", re.S), "new-packages"),
+    # /developers/help_wanted/: the RELEASE and DEVEL deprecated lists (headings
+    # included) from the package data, and the large-files table from the CSV
+    # `just data` fetches.
+    (re.compile(r"<%\s*deprecated_release = get_deprecated.*?<h3>DEVEL</h3>.*?<% end %>\s*<% end %>", re.S),
+     "deprecated-packages"),
+    (re.compile(r"<%=\s*get_packages_with_large_files\s*%>"), "large-files"),
     # /about/mirrors/: the mirror list in config.yaml.
     (re.compile(r"<% for country in config\[:mirrors\] %>.*<% end %>", re.S), "mirrors"),
 ]

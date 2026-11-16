@@ -1,0 +1,26 @@
+---
+/** /developers/help_wanted/: the packages warned about large files (lib/packages.js loadLargeFiles). */
+import { loadLargeFiles, LARGE_FILES_CSV } from '../lib/packages.js';
+
+const rows = loadLargeFiles();
+---
+{rows ? (
+  <table class="package_table" border="1" cellspacing="0" cellpadding="5">
+    <thead>
+      <tr>
+        <th>Package</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r) => (
+        <tr>
+          <td><a class="symlink" href={`/packages/${r.package}/`}>{r.package}</a></td>
+          <td>{r.notes}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+) : (
+  <p>The list is in <a href={LARGE_FILES_CSV}>this CSV file</a>.</p>
+)}

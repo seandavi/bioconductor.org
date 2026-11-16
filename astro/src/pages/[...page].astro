@@ -24,6 +24,8 @@ import CourseYear from '../components/CourseYear.astro';
 import AnnualReports from '../components/AnnualReports.astro';
 import Mirrors from '../components/Mirrors.astro';
 import NewPackages from '../components/NewPackages.astro';
+import DeprecatedPackages from '../components/DeprecatedPackages.astro';
+import LargeFiles from '../components/LargeFiles.astro';
 import PreviousEvents from '../components/PreviousEvents.astro';
 import { renderablePages, loadEvents, topEvents, pastEvents } from '../lib/content.js';
 
@@ -73,6 +75,8 @@ const unknownSlot = (name: string) => {
       : chunk === 'annual-reports' ? <AnnualReports />
       : chunk === 'mirrors' ? <Mirrors />
       : chunk === 'new-packages' ? <NewPackages />
+      : chunk === 'deprecated-packages' ? <DeprecatedPackages />
+      : chunk === 'large-files' ? <LargeFiles />
       : unknownSlot(chunk),
     )}
   </div>

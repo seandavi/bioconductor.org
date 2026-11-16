@@ -202,3 +202,27 @@ export function rVersion(version) {
   if (!existsSync(f)) return null;
   return JSON.parse(readFileSync(f, 'utf8')).r_version || null;
 }
+
+// The packages warned about large files in their source, as nanoc's
+// get_packages_with_large_files() read them: `just data` fetches the core
+// team's CSV into data/. Null when that fetch failed or the CSV changed shape,
+// so the page links to the CSV instead: a personal repo's raw URL must not be
+// able to block a deploy.
+export const LARGE_FILES_CSV = 'https://raw.githubusercontent.com/lshep/LargeFileInvestigation/main/run2_Jan_2026/PackageMaintainers_LargeFiles_ForWebsite.csv';
+
+/** @returns {{ package: string, notes: string }[] | null} */
+export function loadLargeFiles(file = join(DATA, 'large-files.csv')) {
+  if (!existsSync(file)) return null;
+  // ponytail: split on commas as nanoc did; the CSV has no quoted fields.
+  const [head = '', ...rows] = readFileSync(file, 'utf8').split('\n').map((l) => l.trim()).filter(Boolean);
+  const cols = head.split(',').map((c) => c.trim().toLowerCase());
+  const [pi, ni] = [cols.indexOf('package'), cols.indexOf('notes')];
+  if (pi < 0 || ni < 0) {
+    console.warn(`::warning::${file}: no package and notes columns in "${head}"; linking to the CSV instead`);
+    return null;
+  }
+  return rows
+    .map((r) => r.split(',').map((c) => c.trim()))
+    .filter((c) => c[pi])
+    .map((c) => ({ package: c[pi], notes: c[ni] ?? '' }));
+}

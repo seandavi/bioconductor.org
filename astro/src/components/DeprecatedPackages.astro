@@ -1,0 +1,45 @@
+---
+/**
+ * /developers/help_wanted/: the packages with `PackageStatus: Deprecated` in
+ * release and devel, by repository, as nanoc's get_deprecated() listed them
+ * from the build reports' views. Every repository gets a heading, empty or not.
+ */
+import { liveVersions, reposFor, loadRepo } from '../lib/packages.js';
+
+const CATEGORIES = [
+  ['Software', 'bioc'],
+  ['Experiment', 'data/experiment'],
+  ['Annotation', 'data/annotation'],
+  ['Workflow', 'workflows'],
+];
+const { release, devel } = liveVersions();
+const sections = [['RELEASE', release], ['DEVEL', devel]].map(([heading, version]) => {
+  const repos = reposFor(version);
+  return {
+    heading,
+    groups: CATEGORIES.map(([label, repo]) => ({
+      label,
+      // Code-point order, as Ruby's sort.
+      pkgs: (repos.includes(repo) ? Object.entries(loadRepo(version, repo)) : [])
+        .filter(([, p]) => p.PackageStatus === 'Deprecated')
+        .map(([name]) => name)
+        .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    })),
+  };
+});
+---
+{sections.map(({ heading, groups }) => (
+  <>
+    <h3>{heading}</h3>
+    {groups.map(({ label, pkgs }) => (
+      <>
+        <h6>{label} Packages</h6>
+        {pkgs.length === 0 ? <p><em>No deprecated packages.</em></p> : (
+          <ul class="inline_list">
+            {pkgs.map((name) => <li><a class="symlink" href={`/packages/${name}/`}>{name}</a></li>)}
+          </ul>
+        )}
+      </>
+    ))}
+  </>
+))}
