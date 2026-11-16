@@ -10,8 +10,13 @@ undone.
 - [ ] Every `astro-migration` issue except #439 is closed. Pages no longer
       convert at the freeze if any still have unported ERB; `pipeline/freeze.py`
       refuses to run.
-- [ ] Publishing from this repository works: a merge builds the site and uploads
-      it, and PRs get previews. Today bioc-website publishes production.
+- [ ] Production publishes from this repository's `astro` branch (#443):
+      `astro.yml` uploads every build to `site/<sha>-<data>/` and every PR to
+      `preview/pr-<n>/`. It moves `site/latest` only while the repository
+      variable `PUBLISH_LATEST` is `true`. To switch: compare a build with
+      production, set `PUBLISH_LATEST` to `true`, disable bioc-website's
+      `site.yml`, and point its nightly package-data refresh at this
+      repository's `astro.yml`.
 - [ ] The edge redirects for dropped pages are ready to apply
       ([bioc-infrastructure#187](https://github.com/seandavi/bioc-infrastructure/issues/187)).
 - [ ] A date agreed with the core team, away from a release. Announce it to
@@ -38,7 +43,8 @@ undone.
      pipeline/test_content.py pipeline/test_courses.py
    ```
    - `justfile`: delete the `content` recipe, and drop it from `dev` and `build`.
-   - `.github/workflows/astro.yml`: delete the "Freeze dry run" step.
+   - `.github/workflows/astro.yml`: delete the "Freeze dry run" step, and
+     publish `astro/dist` where the publish steps name `$RUNNER_TEMP/dist`.
    - `AGENTS.md` and `README.md`: remove the "until the cutover" notes.
 4. **Check it** before opening the PR: `just build`, then `just parity`, then
    `diff -rq` against a build of `astro` from before step 3 (excluding
@@ -49,10 +55,11 @@ undone.
 
 ## Switching publishing
 
-6. Turn on publishing from this repository's `devel` and check that a build
-   lands (the `x-bioc-build` response header names it).
+6. Move publishing to this repository's `devel`: set the R2 secrets and
+   `PUBLISH_LATEST` here, change `astro` to `devel` in `astro.yml`'s branch
+   filters and `refs/heads/astro`, and point the nightly refresh's dispatch at
+   it. Check that a build lands (the `x-bioc-build` response header names it).
 7. Stop the old publishers:
-   - seandavi/bioc-website: disable its `site.yml` workflow.
    - onclappc02: `systemctl --user disable --now bioc-site-refresh.timer`. Content now
      lives here, so there is nothing to refresh.
    - staging.bioconductor.org: comment out the `update_site` line in
@@ -65,7 +72,10 @@ undone.
 ## Rolling back
 
 - **A bad build:** point the edge back at the previous build (the route table's
-  `build`, or move `site/latest` back). It takes effect within a minute.
+  `build`, or move `site/latest` back). It takes effect within a minute. Set
+  `PUBLISH_LATEST` to anything but `true` first, or the next merge or nightly
+  refresh moves it forward again; builds keep uploading under their own ids.
+  To go back to bioc-website, re-enable its `site.yml` and dispatch it.
 - **The whole cutover:** revert the cutover merge on `devel`, re-enable the
   `update_site` cron and bioc-website's workflow, and point the edge at the last
   bioc-website build. nanoc's history and files are all still in git.

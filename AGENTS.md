@@ -47,8 +47,10 @@ Python needs only PyYAML. `just data` pulls the package-data snapshot from
 - **Issues live upstream** in Bioconductor/bioconductor.org, labeled
   `astro-migration`. A merge into `astro` can't close them, so close the issue
   by hand with a link to the PR and add the `on-astro` label.
-- **Nothing publishes from this branch.** bioc-website still builds
-  production until the cutover.
+- **This branch publishes.** CI uploads every build of `astro` to
+  `site/<sha>-<data>/` in the `bioc-site` bucket and every PR to a preview;
+  it becomes production only while the repository variable `PUBLISH_LATEST` is
+  `true` (FREEZE.md).
 - **Everything here is public.** No credentials, internal hostnames, or
   people's informal remarks.
 - Match the surrounding code's style. Comments say why, not what.

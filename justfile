@@ -9,9 +9,10 @@ default:
     @just --list
 
 # Package-data snapshot (releases, packages, biocViews tree) -> astro/data/.
+# The tarball is kept: CI's build id includes its hash.
 data:
     mkdir -p astro
-    curl -fsSL https://bioconductor.org/_ci/site-data.tar.zst | zstd -dc | tar -x -C astro
+    curl -fsSL https://bioconductor.org/_ci/site-data.tar.zst | tee astro/site-data.tar.zst | zstd -dc | tar -x -C astro
 
 # Prose pages, events and config -> astro/data/site/; courses -> astro/data/courses/.
 content:

@@ -31,6 +31,7 @@ package
 # `just content` and the package-data snapshot; astro/public/ by `just assets`.
 /astro/node_modules
 /astro/data
+/astro/site-data.tar.zst
 /astro/public
 /astro/dist
 /astro/.astro

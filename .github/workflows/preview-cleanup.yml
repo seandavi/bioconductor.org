@@ -1,0 +1,25 @@
+# Delete a PR's preview build from R2 when the PR closes. Fork PRs got no
+# preview (astro.yml has no secrets for them), so there is nothing to delete.
+name: preview-cleanup
+
+on:
+  pull_request:
+    branches: [astro]
+    types: [closed]
+
+permissions: {}
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: auto
+  # aws-cli >= 2.23 sends CRC checksums R2 rejects; only checksum when asked.
+  AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+  AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+
+jobs:
+  cleanup:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - run: aws s3 rm --endpoint-url ${{ secrets.R2_ENDPOINT }} --recursive "s3://bioc-site/preview/pr-${{ github.event.number }}"
