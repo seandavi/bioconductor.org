@@ -135,7 +135,13 @@ jobs:
       # those skip the upload.
       - name: No R2 credentials
         if: env.AWS_ACCESS_KEY_ID == ''
-        run: echo "::warning::R2 secrets unavailable; build $BUILD_ID not uploaded"
+        # Once this repository serves production, a missing secret must fail the
+        # run, not leave production on a stale build behind a green check.
+        run: |
+          if [ "${{ vars.PUBLISH_LATEST }}" = true ] && [ "${{ github.event_name }}" != pull_request ]; then
+            echo "::error::PUBLISH_LATEST is on but the R2 secrets are unavailable"; exit 1
+          fi
+          echo "::warning::R2 secrets unavailable; build $BUILD_ID not uploaded"
 
       - name: Publish preview
         if: env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
