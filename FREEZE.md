@@ -60,6 +60,8 @@ undone.
    filters and `refs/heads/astro`, and point the nightly refresh's dispatch at
    it. Check that a build lands (the `x-bioc-build` response header names it).
 7. Stop the old publishers:
+   - seandavi/bioconductor.org: delete `.github/workflows/sync.yml`, which
+     merged `devel` into `astro` until now.
    - onclappc02: `systemctl --user disable --now bioc-site-refresh.timer`. Content now
      lives here, so there is nothing to refresh.
    - staging.bioconductor.org: comment out the `update_site` line in
