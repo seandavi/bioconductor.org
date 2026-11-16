@@ -1,7 +1,10 @@
 // node --test src/lib/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { splitUrls, personParts, sinceLabel } from './packages.js';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { splitUrls, personParts, sinceLabel, loadLargeFiles } from './packages.js';
 
 test('splitUrls: one URL per comma, space or newline (bioc-infrastructure#100)', () => {
   assert.deepEqual(splitUrls('https://bioinf.wehi.edu.au/edgeR/, https://bioconductor.org/packages/edgeR'),
@@ -33,4 +36,15 @@ test('sinceLabel: the legacy format, half years, "or earlier" and "> " together 
   assert.equal(sinceLabel({ release: '3.22', r: '4.5', date: '2025-10-30' }, now), 'BioC 3.22 (R-4.5) (1 year)');
   assert.equal(sinceLabel({ release: '3.23', r: '4.6', date: '2026-04-29' }, now), 'BioC 3.23 (R-4.6) (< 6 months)');
   assert.equal(sinceLabel({ release: '3.24', r: '4.6' }, now), 'BioC 3.24 (R-4.6)');
+});
+
+test('loadLargeFiles: package and notes by header, null (link fallback) when the fetch failed', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'large-files-'));
+  const csv = join(dir, 'large-files.csv');
+  writeFileSync(csv, 'Package,email,notes\nccdata,a@b.org,\nConnectivityMap,c@d.org,Bounced\n\n');
+  assert.deepEqual(loadLargeFiles(csv),
+    [{ package: 'ccdata', notes: '' }, { package: 'ConnectivityMap', notes: 'Bounced' }]);
+  assert.equal(loadLargeFiles(join(dir, 'absent.csv')), null);
+  writeFileSync(csv, '');
+  assert.equal(loadLargeFiles(csv), null);
 });

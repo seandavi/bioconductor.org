@@ -9,10 +9,14 @@ default:
     @just --list
 
 # Package-data snapshot (releases, packages, biocViews tree) -> astro/data/.
-# The tarball is kept: CI's build id includes its hash.
+# The tarball is kept: CI's build id includes its hash. Also the large-files
+# list /developers/help_wanted/ shows. That list lives in a personal repo, so a
+# failed fetch only warns: the page links to it instead. It isn't in the build
+# id, so a changed list shows up with the next code or snapshot change.
 data:
     mkdir -p astro
     curl -fsSL https://bioconductor.org/_ci/site-data.tar.zst | tee astro/site-data.tar.zst | zstd -dc | tar -x -C astro
+    curl -fsSL --max-time 60 -o astro/data/large-files.csv https://raw.githubusercontent.com/lshep/LargeFileInvestigation/main/run2_Jan_2026/PackageMaintainers_LargeFiles_ForWebsite.csv || { rm -f astro/data/large-files.csv; echo '::warning::large-files CSV fetch failed; /developers/help_wanted/ links to it instead'; }
 
 # Prose pages, events and config -> astro/data/site/; courses -> astro/data/courses/.
 content:

@@ -61,3 +61,17 @@ class ErbDetection(unittest.TestCase):
     def test_r_operator_is_not_erb(self):
         from pipeline.content import ERB
         self.assertIsNone(ERB.search("- fully support of replace operator, %<% <2015-02-09, Mon>\n%<+% too"))
+
+
+class HelpWantedSlots(unittest.TestCase):
+    def test_deprecated_and_large_files_become_slots(self):
+        # Bioconductor/bioconductor.org#444: the page as on devel, no ERB left.
+        from pipeline.content import ERB
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(repo, "content", "developers", "help_wanted.html")) as fh:
+            out = resolve_erb(fh.read(), repo, {})
+        self.assertEqual(ERB.findall(out), [])
+        self.assertIn("</p>\n\n<!--slot:deprecated-packages-->\n\n<div", out)
+        self.assertIn("<!--slot:large-files-->", out)
+        # The voluntarily listed table stays hand-edited HTML.
+        self.assertIn('href="/packages/VariantAnnotation">VariantAnnotation</a></td>', out)
