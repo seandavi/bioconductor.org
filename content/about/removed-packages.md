@@ -3,8 +3,16 @@
 A list of packages removed from Bioconductor along
 with their last-available landing pages.
 
+## Packages deprecated in Bioconductor 3.24 (to be removed in 3.25)
 
-## Packages deprecated in Bioconductor 3.23 (to be removed in 3.24)
+Software Packages:
+
+Experiment Data Packages:
+
+Annotation Packages:
+
+
+## Packages removed with Bioconductor 3.24
 
 Software Packages:
 <ul class="inline_list">
@@ -13,7 +21,6 @@ Software Packages:
 <li><a href="/packages/3.22/bioc/html/InterCellar.html">InterCellar</a></li> 
 <li><a href="/packages/3.21/bioc/html/IONiseR.html">IONiseR</a></li> 
 <li><a href="/packages/3.21/bioc/html/hmdbQuery.html">hmdbQuery</a></li> 
-<li><a href="/packages/3.21/bioc/html/rols.html">rols</a></li> 
 <li><a href="/packages/3.18/bioc/html/scviR.html">scviR</a></li> 
 <li><a href="/packages/3.21/bioc/html/SGCP.html">SGCP</a></li> 
 <li><a href="/packages/3.21/bioc/html/APAlyzer.html">APAlyzer</a></li> 
