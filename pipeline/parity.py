@@ -3,16 +3,18 @@
     python3 -m pipeline.parity [DIST]     # default astro/dist; exit 1 on gaps
 
 Expected outputs are enumerated the way nanoc's Rules route them: every page
-body in content/ at its URL's index.html, every file in assets/ and every
-downloadable file beside the pages in content/ at its own path. Each must exist
+body in content/ at its URL's index.html, every file in assets/, every
+downloadable file beside the pages in content/ at its own path, and what nanoc's
+Rakefile wrote outside the Rules (#446). Each must exist
 in the build, or be listed in GONE with the reason.
 (Bioconductor/bioconductor.org#438)
 """
 
 import os
+import re
 import sys
 
-import re
+import yaml
 
 # nanoc's routing, kept here rather than imported so the check outlives the
 # converter, which the freeze removes (FREEZE.md).
@@ -41,9 +43,18 @@ GONE = {
 # cutover (seandavi/bioc-infrastructure#187).
 
 
+def rakefile_outputs(repo):
+    """What `rake build` wrote that the Rules don't list (Bioconductor/bioconductor.org#446).
+    The release/devel symlinks under packages/ aren't here: the edge resolves those."""
+    with open(os.path.join(repo, "config.yaml")) as fh:
+        versions = yaml.safe_load(fh)["versions"]
+    return {"/config.yaml", "/js/versions.js", "/bioc-version", "/bioc-devel-version",
+            *("/packages/%s/index.html" % v for v in versions)}
+
+
 def expected(repo="."):
     """Every path nanoc would publish from this checkout."""
-    out = set()
+    out = rakefile_outputs(repo)
     content = os.path.join(repo, "content")
     for dirpath, _, files in os.walk(content):
         for fn in files:

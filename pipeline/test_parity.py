@@ -22,9 +22,16 @@ class Parity(unittest.TestCase):
             touch(repo, "content/book/data.zip")
             touch(repo, "content/style/style.sass")  # compiled by nanoc, not copied
             touch(repo, "assets/images/logo.png")
+            touch(repo, "config.yaml", 'versions: ["3.23", "3.24"]\n')
             self.assertEqual(parity.expected(repo), {
-                "/about/index.html", "/help/faq/index.html", "/book/data.zip", "/images/logo.png"})
+                "/about/index.html", "/help/faq/index.html", "/book/data.zip", "/images/logo.png",
+                # nanoc's Rakefile, outside the Rules (#446)
+                "/config.yaml", "/js/versions.js", "/bioc-version", "/bioc-devel-version",
+                "/packages/3.23/index.html", "/packages/3.24/index.html"})
             dist = os.path.join(repo, "dist")
             touch(dist, "about/index.html")
             touch(dist, "images/logo.png")
+            for rel in ("config.yaml", "js/versions.js", "bioc-version", "bioc-devel-version",
+                        "packages/3.23/index.html", "packages/3.24/index.html"):
+                touch(dist, rel)
             self.assertEqual(parity.missing(dist, repo), ["/book/data.zip", "/help/faq/index.html"])

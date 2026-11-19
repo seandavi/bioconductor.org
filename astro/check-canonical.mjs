@@ -20,6 +20,8 @@ for (const f of walk('dist')) {
   // Static HTML copied verbatim from public/ (old book supplements and the
   // like) is published as it was; only pages the build renders carry canonicals.
   if (existsSync(join('public', f.slice('dist/'.length)))) continue;
+  // So is the per-version redirect to BiocViews.html (src/pages/packages/[version]/index.html.js).
+  if (/^dist\/packages\/\d+\.\d+\/index\.html$/.test(f)) continue;
   n++;
   const hits = [...readFileSync(f, 'utf8').matchAll(/<link rel="canonical" href="([^"]*)"/g)];
   const path = '/' + f.slice('dist/'.length);
