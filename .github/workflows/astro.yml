@@ -154,6 +154,15 @@ jobs:
           fi
           echo "::warning::R2 secrets unavailable; build $BUILD_ID not uploaded"
 
+      # TEMPORARY: upload benchmark, removed before merge. The preview sync's
+      # --delete below removes the _bench prefix.
+      # The CLI's default of 10 concurrent requests took 14 minutes for a
+      # build's 19,490 files; 100 takes 73 s, and 200 is no faster (measured in
+      # seandavi/bioconductor.org#21).
+      - name: Upload concurrency
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != ''
+        run: aws configure set default.s3.max_concurrent_requests 100
+
       - name: Publish preview
         if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
         # Second pass only re-touches what the first left behind: sync is
