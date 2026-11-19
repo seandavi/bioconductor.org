@@ -154,6 +154,21 @@ jobs:
           fi
           echo "::warning::R2 secrets unavailable; build $BUILD_ID not uploaded"
 
+      # TEMPORARY: upload benchmark, removed before merge. The preview sync's
+      # --delete below removes the _bench prefix.
+      - name: Benchmark upload concurrency
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
+        run: |
+          nproc; aws --version; find "$RUNNER_TEMP/dist" -type f | wc -l; du -sh "$RUNNER_TEMP/dist"
+          for c in 200 100 50 25; do
+            aws configure set default.s3.max_concurrent_requests $c
+            t0=$(date +%s)
+            aws s3 sync $EP --only-show-errors "$RUNNER_TEMP/dist" "s3://bioc-site/preview/pr-${{ github.event.number }}/_bench/c$c" > "bench-$c.log" 2>&1 || true
+            echo "BENCH concurrency=$c seconds=$(( $(date +%s) - t0 )) errors=$(wc -l < bench-$c.log)" | tee -a "$GITHUB_STEP_SUMMARY"
+            sort bench-$c.log | cut -c1-200 | uniq -c | sort -rn | head -3
+          done
+          aws configure set default.s3.max_concurrent_requests 100
+
       - name: Publish preview
         if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
         # Second pass only re-touches what the first left behind: sync is
