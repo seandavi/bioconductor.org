@@ -42,11 +42,10 @@ const docs = vignettes.map((v, i) => {
 // Build reports exist for software, experiment data and workflows, not for
 // annotation packages (verified: /checkResults/<ver>/data-annotation-LATEST/<pkg>/
 // is a 404 for every package). r-universe builds the same three kinds, but only
-// the current release (bioc-release) and devel (bioc) universes exist; the newest
-// version present is devel and its predecessor the release, as in the slug page.
-import { versions } from '../lib/packages.js';
-const [devel, release] = versions().reverse();
-const channel = { [devel]: 'devel', [release]: 'release' }[version];
+// the current release (bioc-release) and devel (bioc) universes exist; which
+// versions those are is config.yaml's (liveVersions).
+import { channelOf } from '../lib/packages.js';
+const channel = channelOf(version);
 const universe = { devel: 'bioc', release: 'bioc-release' }[channel];
 const hasBuildReport = repo !== 'data/annotation';
 const repoSlug = repo.replace('/', '-');
@@ -115,15 +114,17 @@ const downloads = [
   ['Windows Binary (x86_64)', pkg['win.binary.ver'], winFormat],
   ...macRows.map(([label, field]) => [label, pkg[field], '']),
 ];
-import { releasesOfPackage } from '../lib/packages.js';
+import { releasesOfPackage, aheadOfDevel } from '../lib/packages.js';
 // This package in every release that ships it. Plain links, so it works without JS.
 const releases = releasesOfPackage(name, pkg);
 // This package on the other live channel, for the release/devel line.
 const counterpart = channel && releases.find((r) => r.channel && r.channel !== channel);
 // A package that is not in devel has been removed, and its release and archival
 // pages say so and link its newest release, as the legacy get_removed_fragment().
+// A page for a version built ahead of devel (the next devel, before release
+// day) is never "removed": its new packages aren't in devel yet.
 const newest = releases[0];
-const removed = !releases.some((r) => r.channel === 'devel');
+const removed = !releases.some((r) => r.channel === 'devel') && !aheadOfDevel(version);
 
 import PackageCitation from './PackageCitation.astro';
 // [whole, "MIT + file ", "LICENSE"] when the License field ends in "file LICENSE"

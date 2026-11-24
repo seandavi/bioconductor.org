@@ -1,5 +1,6 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import yaml from 'js-yaml';
 
 // The contract shared with the Nanoc build: an object keyed by package name,
 // one file per version per repo. See docs/views-and-r-universe.qmd.
@@ -109,11 +110,27 @@ export function loadTree(version) {
   return JSON.parse(readFileSync(f, 'utf8'));
 }
 
-// The newest version present is devel and its predecessor the release (the
-// Worker serves them at /packages/devel/ and /packages/release/).
-export function liveVersions() {
-  const vs = versions();
-  return { release: vs.at(-2), devel: vs.at(-1) };
+// The live release and devel are config.yaml's release_version and
+// devel_version, not the newest data on disk: a snapshot can carry the next
+// devel ahead of release day (built, but no release/devel chrome), and
+// release day is then just the config.yaml edit. The Worker serves them at
+// /packages/release/ and /packages/devel/.
+export function liveVersions(config = join(process.cwd(), '..', 'config.yaml')) {
+  const { release_version: release, devel_version: devel } = yaml.load(readFileSync(config, 'utf8'));
+  return { release, devel };
+}
+
+// Built ahead of release day: newer than config.yaml's devel (3.25 while devel is 3.24).
+export function aheadOfDevel(version, devel = liveVersions().devel) {
+  const [m, n] = version.split('.').map(Number);
+  const [dm, dn] = devel.split('.').map(Number);
+  return m > dm || (m === dm && n > dn);
+}
+
+// 'release', 'devel', or null for any other version on disk.
+export function channelOf(version) {
+  const { release, devel } = liveVersions();
+  return version === devel ? 'devel' : version === release ? 'release' : null;
 }
 
 // "BioC 1.6 (R-2.1) or earlier (> 21.5 years)" from a record's `since` field
@@ -133,8 +150,7 @@ export function sinceLabel({ release, r, date, orEarlier }, now = new Date()) {
 
 // This package in every release that ships it, as [{ version, repo, channel }]
 // newest first, so a package page can link to its siblings and every link
-// resolves. `channel` is 'devel' for the newest release on disk and 'release'
-// for its predecessor (as in pages/packages/[...slug].astro).
+// resolves. `channel` is channelOf(version).
 //
 // The list comes from the record's `releases` field ([[version, repo], ...],
 // written by the pipeline, which sees every release). CI builds from a snapshot
@@ -144,7 +160,6 @@ export function sinceLabel({ release, r, date, orEarlier }, now = new Date()) {
 let releasesOf;
 export function releasesOfPackage(name, pkg) {
   const live = versions().reverse();
-  const channelOf = (v) => (v === live[0] ? 'devel' : v === live[1] ? 'release' : null);
   let list = (Array.isArray(pkg?.releases) ? pkg.releases : [])
     .filter((e) => Array.isArray(e) && /^\d+\.\d+$/.test(e[0]) && typeof e[1] === 'string')
     .map(([version, repo]) => ({ version, repo }));

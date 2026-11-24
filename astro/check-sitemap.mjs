@@ -3,6 +3,7 @@
 // limit, cover every rendered release package page, and list devel package pages
 // only for packages with no release page (no devel index pages, no junk pages).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { liveVersions } from './src/lib/packages.js';
 
 const locs = (xml) => [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1]);
 const fail = (msg) => { console.error(msg); process.exit(1); };
@@ -37,7 +38,7 @@ const develDup = devel.filter((u) => releaseSet.has(u.replace('/packages/devel/'
 if (develDup.length) fail(`devel pages that also have a release page, e.g. ${develDup.slice(0, 5).join(' ')}`);
 if (new Set(urls).size !== urls.length) fail('duplicate URLs');
 
-const release = readdirSync('dist/packages').filter((n) => /^\d+\.\d+$/.test(n)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).at(-2);
+const { release } = liveVersions();
 const rendered = readdirSync(`dist/packages/${release}`, { recursive: true }).filter((f) => /\/html\/[^/]+\.html$/.test(f)).length;
 const listed = urls.filter((u) => /\/packages\/release\/.*\/html\/[^/]+\.html$/.test(u)).length;
 if (listed < rendered) fail(`sitemap lists ${listed} release package pages, build rendered ${rendered}`);
