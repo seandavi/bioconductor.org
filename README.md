@@ -7,11 +7,14 @@ and the [Astro](https://astro.build) project in `astro/` that builds it.
 > the content is still in nanoc's form: each page has a `.yaml` sidecar, and
 > courses are rows in `etc/course_descriptions.tsv`. The build converts it.
 > This guide describes the form it takes after the freeze ([FREEZE.md](FREEZE.md)).
-> Edits made in the old form are carried over automatically: every 30 minutes
-> `devel` is merged into `astro`, which builds and publishes the site, so an
-> edit merged into `devel` is live within about half an hour plus the build. A
-> merge that conflicts or fails the checks opens a pull request into `astro`
-> for the maintainers instead, and nothing publishes until it's resolved.
+> Edits made in the old form are carried over automatically: `devel` is merged
+> into `astro`, which builds and publishes the site. The merge is scheduled
+> every 30 minutes, but GitHub runs it only every few hours (4 to 12 hours
+> apart, measured November 2026). To publish an edit sooner, a maintainer runs
+> `gh workflow run sync.yml -R seandavi/bioconductor.org --ref astro`; the edit
+> is then live in about 5 minutes. A merge that conflicts or fails the checks
+> opens a pull request into `astro` for the maintainers instead, and nothing
+> publishes until it's resolved.
 
 ## Editing the site
 
@@ -91,6 +94,12 @@ Link to where they live: GitHub, Zenodo, YouTube.
 `config.yaml` holds `release_version`, `devel_version`, the R versions that go
 with them, and the mirror list. The build checks that `devel_version` is the
 version after `release_version`.
+
+Those two values decide which package pages are release and devel, not which
+versions have package data: the next devel's data is added ahead of release
+day, and until then its pages read "This package is for version X" and stay
+out of search engines. Release day is the edit to these two values and nothing
+else.
 
 ### Everything else
 

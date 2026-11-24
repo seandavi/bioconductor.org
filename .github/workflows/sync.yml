@@ -1,8 +1,9 @@
-# Merges Bioconductor/bioconductor.org's devel into astro every 30 minutes
-# until the cutover (Bioconductor/bioconductor.org#445), so editors' content
-# edits reach astro without anyone doing it by hand. A clean merge that passes
-# astro.yml's checks is pushed and published; a conflict or a failure becomes a
-# pull request for a person, and nothing publishes.
+# Merges Bioconductor/bioconductor.org's devel into astro until the cutover
+# (Bioconductor/bioconductor.org#445), so editors' content edits reach astro
+# without a person merging them. A clean merge that passes astro.yml's checks
+# is pushed and published; a conflict or a failure becomes a pull request for
+# a person, and nothing publishes. Scheduled every 30 minutes, but GitHub ran
+# it 4-12 hours apart in November 2026: dispatch it when an edit is waiting.
 #
 # Everything runs on GITHUB_TOKEN, whose pushes trigger no workflows, so the
 # checks are called here (check only) and astro.yml is dispatched to publish.
