@@ -110,7 +110,9 @@ jobs:
         run: |
           curl -fsSL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-x86_64-unknown-linux-gnu.tar.gz |
             tar xz --strip-components=1 lychee-x86_64-unknown-linux-gnu/lychee
-          REL=$(ls dist/packages | grep -E '^[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          # The live release (config.yaml), not the newest directory: a version
+          # built ahead of devel links /packages/<pkg>/, a Worker redirect.
+          REL=$(node -e "import('./src/lib/packages.js').then((m) => console.log(m.liveVersions().release))")
           PKG=$(ls "dist/packages/$REL/bioc/html" | head -1)
           ./lychee --offline --root-dir "$PWD/dist" --no-progress \
             --exclude 'packages/[0-9.]+/(bioc|data|workflows)/' \
