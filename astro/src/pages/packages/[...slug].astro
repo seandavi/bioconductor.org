@@ -15,21 +15,14 @@ import Site from '../../layouts/Site.astro';
 import PackageDetail from '../../components/PackageDetail.astro';
 import PackageIndex from '../../components/PackageIndex.astro';
 import BiocViews from '../../components/BiocViews.astro';
-import { versions, reposFor, loadRepo, loadTree, repoLabel } from '../../lib/packages.js';
+import { versions, liveVersions, channelOf, reposFor, loadRepo, loadTree, repoLabel } from '../../lib/packages.js';
 
 export async function getStaticPaths() {
   const paths = [];
-  // The newest version present is devel and its predecessor the release --
-  // only that live pair gets the channel chrome on the BiocViews page;
-  // archival releases get a plain version header and no toggle.
-  const byNum = versions().slice().sort((a, b) => {
-    const [am, an] = a.split('.').map(Number);
-    const [bm, bn] = b.split('.').map(Number);
-    return am - bm || an - bn;
-  });
-  const devel = byNum[byNum.length - 1];
-  const release = byNum[byNum.length - 2];
-  const channelOf = (v) => (v === devel ? 'devel' : v === release ? 'release' : null);
+  // Only config.yaml's live pair gets the channel chrome on the BiocViews
+  // page; any other version on disk (archival, or the next devel built ahead
+  // of release day) gets a plain version header and no toggle.
+  const { release, devel } = liveVersions();
   for (const version of versions()) {
     for (const repo of reposFor(version)) {
       const pkgs = loadRepo(version, repo);

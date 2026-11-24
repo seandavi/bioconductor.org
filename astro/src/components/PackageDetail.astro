@@ -42,11 +42,10 @@ const docs = vignettes.map((v, i) => {
 // Build reports exist for software, experiment data and workflows, not for
 // annotation packages (verified: /checkResults/<ver>/data-annotation-LATEST/<pkg>/
 // is a 404 for every package). r-universe builds the same three kinds, but only
-// the current release (bioc-release) and devel (bioc) universes exist; the newest
-// version present is devel and its predecessor the release, as in the slug page.
-import { versions } from '../lib/packages.js';
-const [devel, release] = versions().reverse();
-const channel = { [devel]: 'devel', [release]: 'release' }[version];
+// the current release (bioc-release) and devel (bioc) universes exist; which
+// versions those are is config.yaml's (liveVersions).
+import { channelOf } from '../lib/packages.js';
+const channel = channelOf(version);
 const universe = { devel: 'bioc', release: 'bioc-release' }[channel];
 const hasBuildReport = repo !== 'data/annotation';
 const repoSlug = repo.replace('/', '-');

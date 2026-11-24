@@ -4,7 +4,13 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { splitUrls, personParts, sinceLabel, loadLargeFiles } from './packages.js';
+import { splitUrls, personParts, sinceLabel, loadLargeFiles, liveVersions } from './packages.js';
+
+test('liveVersions: config.yaml decides, not the newest data on disk', () => {
+  const f = join(mkdtempSync(join(tmpdir(), 'cfg-')), 'config.yaml');
+  writeFileSync(f, 'release_version: "3.23"\ndevel_version: "3.24"\nversions:\n- "3.23"\n- "3.24"\n');
+  assert.deepEqual(liveVersions(f), { release: '3.23', devel: '3.24' });
+});
 
 test('splitUrls: one URL per comma, space or newline (bioc-infrastructure#100)', () => {
   assert.deepEqual(splitUrls('https://bioinf.wehi.edu.au/edgeR/, https://bioconductor.org/packages/edgeR'),

@@ -9,17 +9,12 @@
  * The header form submits GET with `search-bar`; honor that (and `q`).
  */
 import Site from '../../../../layouts/Site.astro';
-import { versions, reposFor, loadRepo } from '../../../../lib/packages.js';
+import { liveVersions, reposFor, loadRepo } from '../../../../lib/packages.js';
 
 // Exact/prefix package-name matches get a dedicated strip above the
 // full-text results: BM25 can be out-scored by a short page that mentions a
 // package repeatedly (limmaGUI vs limma), but a name match is unambiguous.
-const byNum = versions().slice().sort((a, b) => {
-  const [am, an] = a.split('.').map(Number);
-  const [bm, bn] = b.split('.').map(Number);
-  return am - bm || an - bn;
-});
-const release = byNum[byNum.length - 2];
+const { release } = liveVersions();
 const names = {};
 for (const repo of reposFor(release)) {
   for (const name of Object.keys(loadRepo(release, repo))) names[name] = repo;

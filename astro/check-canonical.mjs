@@ -3,16 +3,15 @@
 // point at /packages/release/ and /packages/devel/.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { liveVersions } from './src/lib/packages.js';
 
 const walk = (d) =>
   readdirSync(d, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? walk(join(d, e.name)) : e.name.endsWith('.html') ? [join(d, e.name)] : [],
   );
 
-const vers = readdirSync('dist/packages')
-  .filter((n) => /^\d+\.\d+$/.test(n))
-  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-const live = { [vers.at(-1)]: 'devel', [vers.at(-2)]: 'release' };
+const { release, devel } = liveVersions();
+const live = { [devel]: 'devel', [release]: 'release' };
 
 const bad = [];
 let n = 0;
