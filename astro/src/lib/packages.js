@@ -120,6 +120,13 @@ export function liveVersions(config = join(process.cwd(), '..', 'config.yaml')) 
   return { release, devel };
 }
 
+// Built ahead of release day: newer than config.yaml's devel (3.25 while devel is 3.24).
+export function aheadOfDevel(version, devel = liveVersions().devel) {
+  const [m, n] = version.split('.').map(Number);
+  const [dm, dn] = devel.split('.').map(Number);
+  return m > dm || (m === dm && n > dn);
+}
+
 // 'release', 'devel', or null for any other version on disk.
 export function channelOf(version) {
   const { release, devel } = liveVersions();

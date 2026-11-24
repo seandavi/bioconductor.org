@@ -114,15 +114,17 @@ const downloads = [
   ['Windows Binary (x86_64)', pkg['win.binary.ver'], winFormat],
   ...macRows.map(([label, field]) => [label, pkg[field], '']),
 ];
-import { releasesOfPackage } from '../lib/packages.js';
+import { releasesOfPackage, aheadOfDevel } from '../lib/packages.js';
 // This package in every release that ships it. Plain links, so it works without JS.
 const releases = releasesOfPackage(name, pkg);
 // This package on the other live channel, for the release/devel line.
 const counterpart = channel && releases.find((r) => r.channel && r.channel !== channel);
 // A package that is not in devel has been removed, and its release and archival
 // pages say so and link its newest release, as the legacy get_removed_fragment().
+// A page for a version built ahead of devel (the next devel, before release
+// day) is never "removed": its new packages aren't in devel yet.
 const newest = releases[0];
-const removed = !releases.some((r) => r.channel === 'devel');
+const removed = !releases.some((r) => r.channel === 'devel') && !aheadOfDevel(version);
 
 import PackageCitation from './PackageCitation.astro';
 // [whole, "MIT + file ", "LICENSE"] when the License field ends in "file LICENSE"
