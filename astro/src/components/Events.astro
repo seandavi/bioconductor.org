@@ -1,0 +1,31 @@
+---
+/**
+ * The events block, replacing nanoc's `_top_events` partial.
+ *
+ * That partial looped over build-time event items; the same records are the
+ * `events` collection (content/help/events/*.yaml, lib/content.js loadEvents). Markup follows the original so
+ * style/sections/*.css still applies. Titles and locations are raw HTML, as
+ * nanoc printed them: some records carry entities (Ribeir&atilde;o Preto).
+ */
+import { eventDate } from '../lib/content.js';
+
+const { events = [] } = Astro.props;
+---
+{events.length === 0 && <p class="text-small container">No upcoming events.</p>}
+{events.map((e) => (
+  <>
+    <a href={e.link?.url ?? e.url}>
+      <div class="event-card-container">
+        <div class="event-card">
+          <p class="format-bold" set:html={e.title} />
+          <div class="event-date-location">
+            <p class="text-small">{eventDate(e)}</p>
+            <p class="text-small" set:html={e.location} />
+          </div>
+        </div>
+      </div>
+    </a>
+    <br />
+    <br />
+  </>
+))}

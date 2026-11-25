@@ -1,0 +1,16 @@
+---
+/**
+ * /help/events/: every past event, newest first; nanoc's _previous_events
+ * partial. Titles and locations are raw HTML, as nanoc printed them: several
+ * records carry entities (Ribeir&atilde;o Preto).
+ */
+import { eventDate } from '../lib/content.js';
+
+const { events = [] } = Astro.props;
+---
+{events.map((e) => (
+  <p>
+    {e.link?.url ? <a href={e.link.url}><b set:html={e.title} /></a> : <Fragment set:html={e.title} />}<br />
+    {eventDate(e)} &mdash; <Fragment set:html={e.location} />
+  </p>
+))}

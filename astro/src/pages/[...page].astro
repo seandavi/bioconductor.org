@@ -1,0 +1,84 @@
+---
+/**
+ * Prose pages, from the site's own source repository.
+ *
+ * The pipeline (`pipeline/content.py`) has already done the awkward parts:
+ * nanoc keeps front matter in a sibling `.yaml`, and much of the page bodies
+ * carry ERB. By the time the data reaches here it is a flat list of
+ * {url, format, title, body, hero}, with ERB either resolved or reported
+ * unresolved. This route does not know the source was nanoc.
+ *
+ * Bodies come in two formats. Markdown goes through `marked`; `.html` bodies
+ * are emitted as-is. They are NOT both run through the markdown renderer: a
+ * blank line inside a block-level HTML element terminates the HTML block in
+ * CommonMark and the remainder gets markdown-processed, silently mangling the
+ * page. Upstream has 329 `.html` bodies, so that would not be a rare edge.
+ */
+import { marked } from 'marked';
+import Site from '../layouts/Site.astro';
+import Events from '../components/Events.astro';
+import CopyButtons from '../components/CopyButtons.astro';
+import CourseTable from '../components/CourseTable.astro';
+import CourseYears from '../components/CourseYears.astro';
+import CourseYear from '../components/CourseYear.astro';
+import AnnualReports from '../components/AnnualReports.astro';
+import Mirrors from '../components/Mirrors.astro';
+import NewPackages from '../components/NewPackages.astro';
+import DeprecatedPackages from '../components/DeprecatedPackages.astro';
+import LargeFiles from '../components/LargeFiles.astro';
+import PreviousEvents from '../components/PreviousEvents.astro';
+import { renderablePages, loadEvents, topEvents, pastEvents } from '../lib/content.js';
+
+export async function getStaticPaths() {
+  return (await renderablePages()).map((p) => ({
+    // '/' -> 'index', '/about/' -> 'about/index'. Astro is configured with
+    // build.format 'file', which emits <slug>.html, so naming the slug
+    // '<path>/index' produces the '<path>/index.html' the Worker resolves
+    // trailing-slash URLs to (see worker/src/keys.ts candidates()).
+    params: { page: p.data.path === '/' ? 'index' : p.data.path.replace(/^\/|\/$/g, '') + '/index' },
+    props: { page: p },
+  }));
+}
+
+const { page } = Astro.props;
+const { data } = page;
+const body = page.body ?? '';
+
+marked.setOptions({ gfm: true, breaks: false });
+const html = data.format === 'md' ? await marked.parse(body) : body;
+
+// The pipeline leaves `<!--slot:name-->` where a data-driven partial stood.
+// Split on them so each renders as a real component rather than being injected
+// as a string: split() with a capture group alternates [html, name, html, …].
+const parts = html.split(/<!--slot:([a-z-]+)-->/);
+const events = parts.includes('events') ? topEvents(await loadEvents()) : [];
+const allEvents = parts.includes('upcoming-events') || parts.includes('previous-events') ? await loadEvents() : [];
+const unknownSlot = (name: string) => {
+  throw new Error(`${data.path}: no component for <!--slot:${name}-->`);
+};
+---
+<Site title={data.title} description={data.description ?? undefined} fullwidth={data.fullwidth}>
+  {data.heroHtml && (
+    <section class="hero">
+      <div class="container"><Fragment set:html={data.heroHtml} /></div>
+    </section>
+  )}
+  <div data-pagefind-body data-pagefind-filter="type:Pages" data-pagefind-meta={`title:${data.title}`}>
+    {parts.map((chunk, i) =>
+      i % 2 === 0 ? <Fragment set:html={chunk} />
+      : chunk === 'events' ? <Events events={events} />
+      : chunk === 'upcoming-events' ? <Events events={topEvents(allEvents, Infinity)} />
+      : chunk === 'previous-events' ? <PreviousEvents events={pastEvents(allEvents)} />
+      : chunk === 'courses' ? <CourseTable />
+      : chunk === 'course-years' ? <CourseYears />
+      : chunk === 'course-year' ? <CourseYear path={data.path} title={data.title} />
+      : chunk === 'annual-reports' ? <AnnualReports />
+      : chunk === 'mirrors' ? <Mirrors />
+      : chunk === 'new-packages' ? <NewPackages />
+      : chunk === 'deprecated-packages' ? <DeprecatedPackages />
+      : chunk === 'large-files' ? <LargeFiles />
+      : unknownSlot(chunk),
+    )}
+  </div>
+  {data.path === '/install/' && <CopyButtons />}
+</Site>

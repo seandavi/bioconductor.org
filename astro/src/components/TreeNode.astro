@@ -1,0 +1,61 @@
+---
+/**
+ * One biocViews term, rendered recursively.
+ *
+ * Astro components recurse by importing themselves; the recursion terminates
+ * because tree.json is a finite tree (the vocabulary is a DAG, but tree.py
+ * has already expanded it into tree form, duplicating shared subtrees).
+ *
+ * The two package figures on a node are different sets and must not be
+ * conflated: `packageList` holds packages filed DIRECTLY under the term, while
+ * the count in `data` is CUMULATIVE over the whole subtree. AssayDomain reads
+ * "AssayDomain (960)" while carrying 13 packages of its own.
+ */
+import TreeNode from './TreeNode.astro';
+
+// repoOf: package name -> repo path ('bioc', 'data/annotation', ...). The
+// vocabulary spans all four repos, so a fixed /bioc/ link would 404 for every
+// annotation and experiment package.
+const { node, version, repoOf = {} } = Astro.props;
+const hrefFor = (p) => `/packages/${version}/${repoOf[p] ?? 'bioc'}/html/${p}.html`;
+
+const label = String(node.data ?? '');
+const m = label.match(/^(.*?)\s*\((\d+)\)\s*$/);
+const name = m ? m[1] : label;
+const count = m ? Number(m[2]) : null;
+const id = node.attr?.id ?? name;
+const packages = node.attr?.packageList
+  ? node.attr.packageList.split(',').filter(Boolean)
+  : [];
+const children = node.children ?? [];
+
+// Anchors like #___Software are linked directly from the site header and
+// footer, so the id format is part of the contract, not a detail.
+const anchor = `___${id}`;
+---
+{children.length > 0 ? (
+  <details class="bv-term" id={anchor}>
+    <summary>
+      {name}{count !== null && <span class="bv-count"> ({count})</span>}
+    </summary>
+    {packages.length > 0 && (
+      <div class="bv-pkgs">
+        {packages.map((p) => (
+          <a href={hrefFor(p)} data-pkg={p}>{p}</a>
+        ))}
+      </div>
+    )}
+    {children.map((c) => <TreeNode node={c} version={version} repoOf={repoOf} />)}
+  </details>
+) : (
+  <div class="bv-leaf" id={anchor}>
+    {name}{count !== null && <span class="bv-count"> ({count})</span>}
+    {packages.length > 0 && (
+      <div class="bv-pkgs">
+        {packages.map((p) => (
+          <a href={hrefFor(p)} data-pkg={p}>{p}</a>
+        ))}
+      </div>
+    )}
+  </div>
+)}

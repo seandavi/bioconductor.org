@@ -47,6 +47,13 @@ img {
   main > .container.main-subnav > .content {
     position: relative;
   }
+
+  /* overflow: hidden clipped wide tables on narrow screens (#400). Narrow
+   * screens only: on desktop the homepage's 100vw events strip would show a
+   * horizontal scrollbar. */
+  .content {
+    overflow-x: auto;
+  }
 }
 
 .sr-only {

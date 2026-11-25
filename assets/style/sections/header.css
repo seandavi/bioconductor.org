@@ -178,7 +178,7 @@ input:focus::placeholder {
 
   .header-nav.active {
     opacity: 1;
-    height: 21rem;
+    height: auto; /* a fixed height clipped search and Get Started (#400) */
   }
 
   .nav-mobile {

@@ -1,0 +1,27 @@
+{
+  "name": "bioconductor-astro",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build && pagefind --site dist",
+    "dev": "astro dev",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "^6.3.11",
+    "@astrojs/react": "^6.0.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "astro": "^5.0.0",
+    "js-yaml": "^4.1.1",
+    "marked": "^18.0.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@types/node": "^26.6.6",
+    "pagefind": "^1.5.2",
+    "typescript": "^5.9.3"
+  }
+}

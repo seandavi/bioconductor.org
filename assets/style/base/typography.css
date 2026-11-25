@@ -60,6 +60,13 @@ a {
   color: black;
 }
 
+/* Links in body text need to look like links; black made them read as text
+ * (#399). :where() keeps specificity at `a`, so buttons, cards and nav that
+ * set their own colour are untouched. --primary-p400 is 8.1:1 on white. */
+:where(.content) a {
+  color: var(--primary-p400);
+}
+
 @media (max-device-width: 768px),(width <= 768px){
   h1,
   .text-h1 {

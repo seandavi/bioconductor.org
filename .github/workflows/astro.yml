@@ -1,0 +1,205 @@
+# Build, check and publish the Astro site (Bioconductor/bioconductor.org#432,
+# #443) to the bioc-site R2 bucket, as seandavi/bioc-website's site.yml does.
+# Nothing uploads until every check, the freeze dry run included, has passed.
+#
+#   push to astro -> s3://bioc-site/site/<sha>-<data>/  (immutable)
+#   dispatch      -> same; the nightly package-data refresh dispatches it
+#   pull request  -> s3://bioc-site/preview/pr-<n>/ (deleted on close by
+#                    preview-cleanup.yml)
+#
+# site/latest, the build production serves, is written only while the
+# repository variable PUBLISH_LATEST is 'true'; otherwise builds land beside
+# production to be compared with it. The edge decides what is served.
+#
+# sync.yml (#445) also calls this workflow with `ref` to check a devel merge
+# before pushing it. Those calls only check: every publish step is skipped.
+name: astro
+
+on:
+  pull_request:
+    branches: [astro]
+  push:
+    branches: [astro]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit to check
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: astro-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: auto
+  # aws-cli >= 2.23 sends CRC checksums R2 rejects; only checksum when asked.
+  AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+  AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+  # R2 throws transient ServiceUnavailable under sync's concurrency.
+  AWS_MAX_ATTEMPTS: "10"
+  AWS_RETRY_MODE: adaptive
+  EP: --endpoint-url ${{ secrets.R2_ENDPOINT }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: astro/package-lock.json
+
+      # The runner's system Python refuses pip installs (PEP 668).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: extractions/setup-just@v2
+
+      - name: Install
+        run: |
+          pip install pyyaml yamllint
+          just install
+
+      - name: YAML
+        run: yamllint -f github config.yaml content etc
+
+      - name: Tests
+        run: just test
+
+      # The build id is code sha + snapshot hash, in bioc-website's format. The
+      # edge cache keys on it and treats a build as immutable, so a refreshed
+      # snapshot on the same code must publish under a new id.
+      - name: Build
+        run: |
+          just build
+          echo "BUILD_ID=${{ github.sha }}-$(sha256sum astro/site-data.tar.zst | cut -c1-8)" >> "$GITHUB_ENV"
+
+      # Every page, asset and download nanoc would publish from this repo is in
+      # the build, apart from pipeline/parity.py's documented exclusions.
+      - name: Parity with nanoc
+        run: just parity
+
+      - name: Canonical links, sitemap, robots
+        working-directory: astro
+        run: |
+          node check-canonical.mjs
+          node check-sitemap.mjs
+          node check-robots.mjs
+
+      # Offline against dist, on the template pages, as in seandavi/bioc-website:
+      # the edge also serves the R2 mirror, so mirror-served paths can't be
+      # decided offline and are excluded.
+      - name: Internal links on template pages
+        working-directory: astro
+        run: |
+          curl -fsSL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-x86_64-unknown-linux-gnu.tar.gz |
+            tar xz --strip-components=1 lychee-x86_64-unknown-linux-gnu/lychee
+          # The live release (config.yaml), not the newest directory: a version
+          # built ahead of devel links /packages/<pkg>/, a Worker redirect.
+          REL=$(node -e "import('./src/lib/packages.js').then((m) => console.log(m.liveVersions().release))")
+          PKG=$(ls "dist/packages/$REL/bioc/html" | head -1)
+          ./lychee --offline --root-dir "$PWD/dist" --no-progress \
+            --exclude 'packages/[0-9.]+/(bioc|data|workflows)/' \
+            --exclude 'packages/(release|devel|stats)(/|$)' --exclude '/shields/' \
+            --exclude '/checkResults$' --exclude '/dashboard$' \
+            --exclude '/about/annual-reports$' \
+            --exclude 'support\.bioconductor\.org' \
+            dist/index.html dist/install/index.html dist/about/index.html \
+            dist/help/index.html dist/developers/index.html dist/next.html \
+            "dist/packages/$REL/BiocViews.html" "dist/packages/$REL/bioc/html/$PKG"
+
+      - name: Types (astro check)
+        working-directory: astro
+        run: npx astro check
+
+      # The cutover's one-time conversion (pipeline/freeze.py, FREEZE.md) must
+      # still produce the same site: freeze this checkout, rebuild without the
+      # converter, and compare. Last, because it rewrites the working tree.
+      # /next is built from live registry data, and BiocViews.html carries a
+      # random island id, so both differ between any two builds.
+      - name: Freeze dry run
+        run: |
+          mv astro/dist "$RUNNER_TEMP/dist"
+          python3 -m pipeline.freeze
+          just assets
+          (cd astro && npm run build) > "$RUNNER_TEMP/frozen.log" 2>&1 || { tail -40 "$RUNNER_TEMP/frozen.log"; exit 1; }
+          python3 -m pipeline.parity astro/dist
+          diff -rq "$RUNNER_TEMP/dist" astro/dist -x pagefind -x _astro -x next | grep -v '/BiocViews.html ' && exit 1 || echo "frozen build matches"
+
+      # From here on everything has passed; the build published is the one made
+      # before the freeze dry run, which it moved to $RUNNER_TEMP/dist. Fork PRs
+      # get no secrets, nor does any run until the R2 secrets are set, so
+      # those skip the upload.
+      - name: No R2 credentials
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID == ''
+        # Once this repository serves production, a missing secret must fail the
+        # run, not leave production on a stale build behind a green check.
+        run: |
+          if [ "${{ vars.PUBLISH_LATEST }}" = true ] && [ "${{ github.event_name }}" != pull_request ]; then
+            echo "::error::PUBLISH_LATEST is on but the R2 secrets are unavailable"; exit 1
+          fi
+          echo "::warning::R2 secrets unavailable; build $BUILD_ID not uploaded"
+
+      # The CLI's default of 10 concurrent requests took 14 minutes for a
+      # build's 19,490 files; 100 takes 73 s, and 200 is no faster (measured in
+      # seandavi/bioconductor.org#21).
+      - name: Upload concurrency
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != ''
+        run: aws configure set default.s3.max_concurrent_requests 100
+
+      - name: Publish preview
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
+        # Second pass only re-touches what the first left behind: sync is
+        # idempotent, and one transient failure must not fail the build.
+        run: |
+          DEST="s3://bioc-site/preview/pr-${{ github.event.number }}"
+          aws s3 sync $EP --delete --no-progress "$RUNNER_TEMP/dist" "$DEST" ||
+            aws s3 sync $EP --delete --no-progress "$RUNNER_TEMP/dist" "$DEST"
+
+      - name: Comment preview URL
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `https://bioc-dev.cancerdatasci.org/_pr/${context.issue.number}/`;
+            const marker = '<!-- preview-url -->';
+            const body = `${marker}\nPreview for ${context.payload.pull_request.head.sha}: ${url}`;
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo, issue_number: context.issue.number });
+            const mine = comments.find(c => c.body.startsWith(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+            }
+
+      # A dispatch can name any branch; only astro's builds are published.
+      - name: Publish versioned build
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/astro'
+        run: |
+          DEST="s3://bioc-site/site/$BUILD_ID"
+          aws s3 sync $EP --no-progress "$RUNNER_TEMP/dist" "$DEST" ||
+            aws s3 sync $EP --no-progress "$RUNNER_TEMP/dist" "$DEST"
+          echo "Published $DEST" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Point site/latest at this build
+        if: inputs.ref == '' && env.AWS_ACCESS_KEY_ID != '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/astro' && vars.PUBLISH_LATEST == 'true'
+        run: |
+          echo -n "$BUILD_ID" | aws s3 cp $EP - s3://bioc-site/site/latest
+          echo "site/latest -> $BUILD_ID" | tee -a "$GITHUB_STEP_SUMMARY"

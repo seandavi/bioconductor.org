@@ -1,0 +1,22 @@
+---
+/** One year page's courses, newest first: nanoc's _course_year_summary partial. */
+import { getCollection } from 'astro:content';
+
+interface Props { path: string; title: string }
+const { path, title } = Astro.props;
+const child = new RegExp(`^${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^/]+/$`);
+const courses = (await getCollection('pages', ({ data }) => child.test(data.path)))
+  .sort((a, b) => (b.data.start_date?.getTime() ?? 0) - (a.data.start_date?.getTime() ?? 0));
+const month = (d?: Date) => d?.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' }) ?? '';
+---
+<h1><img src="/images/icons/help.gif" alt="" />Course Materials for {title}</h1>
+
+<div id="course_list">
+  {courses.map(({ data }) => (
+    <>
+      <h2><a href={data.path}>{data.title}</a></h2>
+      <p>{month(data.start_date)}, {data.location}</p>
+      <p set:html={data.description ?? ''} />
+    </>
+  ))}
+</div>

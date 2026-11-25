@@ -25,4 +25,14 @@ content/help/workflows/*
 postgresql_password
 manifest/*
 node_modules/
-package
+/package
+
+# Astro build (astro/): generated inputs and outputs. astro/data/ is written by
+# `just content` and the package-data snapshot; astro/public/ by `just assets`.
+/astro/node_modules
+/astro/data
+/astro/site-data.tar.zst
+/astro/public
+/astro/dist
+/astro/.astro
+__pycache__/

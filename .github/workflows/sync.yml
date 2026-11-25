@@ -1,0 +1,149 @@
+# Merges Bioconductor/bioconductor.org's devel into astro until the cutover
+# (Bioconductor/bioconductor.org#445), so editors' content edits reach astro
+# without a person merging them. A clean merge that passes astro.yml's checks
+# is pushed and published; a conflict or a failure becomes a pull request for
+# a person, and nothing publishes. Scheduled every 30 minutes, but GitHub ran
+# it 4-12 hours apart in November 2026: dispatch it when an edit is waiting.
+#
+# Everything runs on GITHUB_TOKEN, whose pushes trigger no workflows, so the
+# checks are called here (check only) and astro.yml is dispatched to publish.
+name: sync devel
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-devel
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      result: ${{ steps.merge.outputs.result }}
+      branch: ${{ steps.merge.outputs.branch }}
+      devel: ${{ steps.merge.outputs.devel }}
+      sha: ${{ steps.merge.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: astro
+          fetch-depth: 0
+
+      - id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags https://github.com/Bioconductor/bioconductor.org devel
+          devel=$(git rev-parse FETCH_HEAD)
+          short=${devel:0:7}
+          branch=sync/devel-$short
+          if git merge-base --is-ancestor "$devel" HEAD; then
+            echo "astro already has devel $short"
+            exit 0
+          fi
+          # One sync PR at a time: while it waits for a person, newer devel
+          # commits wait too, and the first run after it closes merges them all.
+          open=$(gh pr list --base astro --state open --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("sync/devel-"))] | length')
+          if [ "$open" != 0 ]; then
+            echo "a sync PR is open; waiting for it"
+            exit 0
+          fi
+          # A closed sync PR for this commit was a person's decision; a manual
+          # run retries it, a scheduled one waits for devel to move.
+          closed=$(gh pr list --head "$branch" --state closed --json number --jq length)
+          if [ "$GITHUB_EVENT_NAME" = schedule ] && [ "$closed" != 0 ]; then
+            echo "$branch was closed unmerged; waiting for devel to move"
+            exit 0
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "devel=$short" >> "$GITHUB_OUTPUT"
+          if git merge --no-ff --no-edit -m "Merge Bioconductor/bioconductor.org devel ($short) into astro" "$devel"; then
+            git push --force origin "HEAD:refs/heads/$branch"
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            echo "result=clean" >> "$GITHUB_OUTPUT"
+          else
+            # A conflicted merge can't be committed without its markers, so the
+            # branch is devel itself and the PR is the merge; a person resolves it.
+            git diff --name-only --diff-filter=U
+            git merge --abort
+            git push --force origin "$devel:refs/heads/$branch"
+            echo "result=conflict" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Checks only: astro.yml skips every publish step when called with a ref.
+  # A called workflow can't hold more permissions than its caller grants, and
+  # astro.yml's job asks for pull-requests: write (the preview comment).
+  check:
+    needs: merge
+    if: needs.merge.outputs.result == 'clean'
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/astro.yml
+    with:
+      ref: ${{ needs.merge.outputs.sha }}
+
+  publish:
+    needs: [merge, check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # Fast-forward only: if astro moved during the checks this fails, and the
+      # next run merges again on top of it.
+      - name: Push to astro
+        run: |
+          gh api -X PATCH "repos/$GH_REPO/git/refs/heads/astro" -f sha=${{ needs.merge.outputs.sha }} -F force=false
+          gh api -X DELETE "repos/$GH_REPO/git/refs/heads/${{ needs.merge.outputs.branch }}"
+
+      - name: Publish
+        run: gh workflow run astro.yml --ref astro
+
+  pull-request:
+    needs: [merge, check]
+    if: >-
+      always() && (needs.merge.outputs.result == 'conflict' ||
+      (needs.merge.outputs.result == 'clean' && needs.check.result == 'failure'))
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BRANCH: ${{ needs.merge.outputs.branch }}
+      DEVEL: ${{ needs.merge.outputs.devel }}
+      RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      CONFLICT: ${{ needs.merge.outputs.result == 'conflict' }}
+    steps:
+      - name: Open the pull request
+        run: |
+          if [ "$CONFLICT" = true ]; then
+            why="Bioconductor/bioconductor.org devel ($DEVEL) doesn't merge cleanly into astro ([run]($RUN) lists the files). This branch is devel itself; resolve on it:
+
+          \`\`\`bash
+          git fetch origin && git switch $BRANCH && git merge origin/astro
+          \`\`\`
+
+          A file nanoc needed that astro deleted (layouts, lib, Rules): keep it deleted (\`git rm\`). Content: take devel's. That's FREEZE.md step 2."
+          else
+            why="Bioconductor/bioconductor.org devel ($DEVEL) merges cleanly into astro, but the merge fails the checks: [run]($RUN). Fix it on this branch, or fix devel and close this PR."
+          fi
+          gh pr create --base astro --head "$BRANCH" --title "Merge devel ($DEVEL) into astro" --body "$why
+
+          Merge with a merge commit, not a squash. Until this PR closes, the sync (.github/workflows/sync.yml) merges nothing more. Opened by the sync, so CI runs from the first push to the branch."

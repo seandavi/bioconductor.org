@@ -16,6 +16,6 @@ tags:
 - intro
 - seattle
 - package
-description: 
+description: >-
   The course covers data analysis of ChIP-Seq and RNA-Seq experiments: Alignment, data handling and visualisation, region identification, differential expression, data quality assessment, integrative bioinformatic and statistical analysis, using R/Bioconductor as well as other open source software tools. This 2.5 day course is a mix of lectures and practical computer labs (1.5 days and 1 day, respectively). Familiarity with computer programming and the technology and biological use cases of high throughput sequencing is required, as is some experience with R/Bioconductor.
 end_date: 2011-06-22
